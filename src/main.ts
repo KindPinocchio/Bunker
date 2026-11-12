@@ -19,7 +19,7 @@ root.innerHTML = `
       <div class="run-controls"><span id="run-state" class="eyebrow">НА ПАУЗЕ</span><button id="toggle" class="button primary">Запустить</button></div>
       <div class="storage-controls"><button id="save" class="button quiet">Сохранить</button><button id="load" class="button quiet">Загрузить</button><button id="export" class="text-button">Экспорт JSON ↗</button><label class="text-button file-label">Импорт JSON ↙<input id="import" type="file" accept="application/json,.json"/></label></div>
     </section>
-    <div id="notice" role="status" aria-live="polite">Данные проверены. Стенд готов к запуску.</div>
+    <div id="notice" role="status" aria-live="polite">Загрузка данных и схемы…</div>
     <section class="metrics" aria-label="Состав данных"><div><span>ПОМЕЩЕНИЯ</span><strong>17<small> / 2 этажа</small></strong></div><div><span>ДВЕРНЫЕ СВЯЗИ</span><strong>15<small> + 2 лестницы</small></strong></div><div><span>ИНЖЕНЕРНЫЙ КОНТУР</span><strong>35<small> реле · 35 датчиков</small></strong></div><div><span>ПРИНЯТЫЙ ОБЪЁМ</span><strong>1128<small> м³ · 376 м²</small></strong></div></section>
     <div class="workspace"><section class="panel plan-panel"><div class="panel-heading"><div><p class="eyebrow">01 / ТОПОЛОГИЯ</p><h2>Связность помещений</h2></div><div class="floor-switch" aria-label="Этаж схемы"><button id="upper" aria-pressed="true">Верхний</button><button id="lower" aria-pressed="false">Нижний</button></div></div><div id="plan"></div><div class="plan-legend"><span><i class="legend-open"></i> Открытый проход</span><span><i class="legend-closed"></i> Закрытая дверь</span><span>Служебная схема · в игре карты нет</span></div></section>
     <aside class="panel phases-panel"><div class="panel-heading"><div><p class="eyebrow">02 / ТАКТ</p><h2>Порядок расчёта</h2></div><span class="small-tag">A.14</span></div><ol id="phases"></ol><p class="panel-note">Вода, тепло, износ, питание и автоматика рассчитываются. Биологическая фаза пока создаёт только эпизоды оборудования; рост колоний, крысы и опасности игрока ещё не подключены.</p><div class="repeat-box"><span class="eyebrow">КОНТРОЛЬ ПОВТОРЕНИЯ</span><code id="state-hash">—</code><button id="replay" class="text-button">Проверить журнал →</button></div></aside></div>
@@ -34,6 +34,9 @@ root.innerHTML = `
 
 const element = <T extends HTMLElement = HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
 const notice = (message: string, error = false) => { element("#notice").textContent = message; element("#notice").dataset.error = String(error); };
+const controls = root.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>("button, input, select");
+root.dataset.ready = "false";
+for (const control of controls) control.disabled = true;
 
 async function boot(): Promise<void> {
   const content = loadContent();
@@ -157,7 +160,10 @@ async function boot(): Promise<void> {
   }));
   document.addEventListener("visibilitychange", () => { syncClock(); if (document.hidden) { session.pause(); notice("Вкладка скрыта: стенд автоматически на паузе."); update(); } lastFrame = performance.now(); });
   const frame = (now: number) => { const previousTick = session.tick; syncClock(now); if (session.tick !== previousTick) update(); requestAnimationFrame(frame); };
-  update(); requestAnimationFrame(frame);
+  for (const control of controls) control.disabled = false;
+  update(); root.dataset.ready = "true";
+  notice("Данные проверены. Стенд готов к запуску.");
+  requestAnimationFrame(frame);
 }
 
-void boot().catch((error: unknown) => { notice(error instanceof Error ? error.message : String(error), true); for (const control of root.querySelectorAll<HTMLButtonElement>("button")) control.disabled = true; });
+void boot().catch((error: unknown) => { root.dataset.ready = "error"; notice(error instanceof Error ? error.message : String(error), true); for (const control of controls) control.disabled = true; });

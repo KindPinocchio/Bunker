@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 test("boots the built app, renders Pixi, pauses and replays a developer command", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
+  await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
   await expect(page.locator("#plan canvas")).toBeVisible();
   await expect(page.getByTestId("tick")).toHaveText("0");
   await expect(page.getByRole("button", { name: "Закрыть", exact: true })).toBeDisabled();
@@ -23,6 +24,7 @@ test("boots the built app, renders Pixi, pauses and replays a developer command"
 
 test("IndexedDB survives a reload; JSON round trip preserves a pending action", async ({ page }) => {
   await page.goto("/");
+  await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
   await page.getByLabel("SEED ЭКСПЕДИЦИИ").fill("browser-save");
   await page.getByRole("button", { name: "Создать", exact: true }).click();
   await page.getByRole("button", { name: "Запустить", exact: true }).click();
@@ -40,6 +42,7 @@ test("IndexedDB survives a reload; JSON round trip preserves a pending action", 
   expect(snapshot.world.seed).toBe("browser-save");
   expect(snapshot.world.balanceVersion).toBe("1.1");
   await page.reload();
+  await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
   await page.getByRole("button", { name: "Загрузить", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Снимок загружен");
   await expect(page.getByLabel("SEED ЭКСПЕДИЦИИ")).toHaveValue("browser-save");
@@ -51,6 +54,7 @@ test("IndexedDB survives a reload; JSON round trip preserves a pending action", 
 
 test("unsupported JSON import leaves the current world unchanged", async ({ page }) => {
   await page.goto("/");
+  await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
   const before = await page.locator("#state-hash").textContent();
   await page.locator("#import").setInputFiles({ name: "wrong.json", mimeType: "application/json", buffer: Buffer.from('{"schemaVersion":999}') });
   await expect(page.getByRole("status")).toContainText("Снимок не загружен");
