@@ -1,6 +1,6 @@
 # Bunker implementation plan
 
-Planning baseline: updated 12 November 2026. Source: [technical specification v1.0](spec/bunker_technical_spec_ru_v1.md), its [complete companion package](spec/README.md), and the [temperature decision 1.1](fungus-temperature-v1_1.md). The active implementation balance is [1.1](../data/bunker_balance_v1_1.json). Engineering kernel 0.2 and developer-interface source are implemented; 41 dependency-free numerical checks pass. Full application verification is blocked by dependency installation. Current evidence is in the [engineering report](verification-engineering-2026-11-12.md), and the delivery checklist is the [Russian work plan](work-plan-ru.md).
+Planning baseline: updated 12 November 2026. Source: [technical specification v1.0](spec/bunker_technical_spec_ru_v1.md), its [complete companion package](spec/README.md), and the [temperature decision 1.1](fungus-temperature-v1_1.md). The active implementation balance is [1.1](../data/bunker_balance_v1_1.json). Engineering kernel 0.2 and the developer interface are implemented and verified: 41 dependency-free checks, 34 Vitest checks, type checking/build, and all 3 Chromium scenarios pass. GitHub Actions supplies the build and local dependency archive. Current evidence is in the [CI report](verification-ci-2026-11-12.md) and [engineering report](verification-engineering-2026-11-12.md); the delivery checklist is the [Russian work plan](work-plan-ru.md).
 
 The inspected `/workspace/Bunker` checkout had one initial commit containing only `README.md`, with no application, dependencies, tests, or repository-specific agent instructions. Build this as a new, local-first browser game in this repository. Keep the simulation executable in Node independently of the browser, then attach the isometric presentation and readable Russian windows.
 
@@ -144,7 +144,7 @@ Each stage should leave a runnable harness or playable build and a short record 
 
 | Stage | Concrete result | Exit evidence and dependencies |
 | --- | --- | --- |
-| 1. Sources and contracts | Preserve the imported package, add runtime schemas/normalizers and build/test scripts, load balance 1.1 | Archive integrity, data relationships, and `F(T)` definition/checks complete; runtime validation and application setup remain to implement |
+| 1. Sources and contracts | Preserve the imported package, add runtime schemas/normalizers and build/test scripts, load balance 1.1 | Implemented and checked in CI, including runtime validation, application setup and the lockfile |
 | 2. Deterministic kernel | PCG32 streams, state/command model, tick pipeline, ownership, pause, snapshot/replay; synthetic room/circuit fixtures | Same seed and timed inputs reproduce state; save/resume preserves RNG and a pending atomic action |
 | 3. Engineering model | Door modes, heat/water/stairs, controller, pumps, sensors/relays, external supply/battery | Arithmetic and causal fixtures pass using the supplied coefficients before the visuals can conceal mistakes |
 | 4. Bedroom visual slice | Furnished `u_bed1`, movement/visibility, real archive material, exchange/equipment/reading, pause/save UI | Art/readability gate and responsive deterministic input at 1280×720; author exact placements and assets from the supplied room brief |
@@ -152,13 +152,13 @@ Each stage should leave a runnable harness or playable build and a short record 
 | 6. Complete content | Final dressing, asset variants, archive links, posters/instructions, all sound | Content manifest reconciled with actual files and readable windows; no production placeholders |
 | 7. Acceptance and calibration | All AC01–AC38, replay exports, cross-browser/performance report, novice observations | Fixed-seed evidence, at least five novice sessions, versioned balance changes, launch instructions and known limitations |
 
-The first coding batch should complete runtime contracts in stage 1 and a small stage 2 kernel with the supplied room graph plus one reference-room fixture, then add the two-room/stair engineering fixture. Follow with the bedroom slice before producing the remaining room art. Keep provisional test data visibly separate from accepted runtime data.
+The first coding batch and engineering fixtures are complete and verified. Next comes the bedroom slice before producing the remaining room art. Keep provisional test data visibly separate from accepted runtime data; full player interactions, biological systems and art acceptance are still required.
 
 ## Verification and environment
 
-The inspected environment exposes Node `24.22.1`, npm `11.9.0`, Python `3.12.14`, system Chromium, and ffmpeg. Forty-one dependency-free checks now pass for the temperature contract, source integrity and engineering systems. TypeScript syntax/stripping checks also pass. Application dependencies are not installed: the inherited proxy connection returns `EPERM`; `npm run check` currently fails because `tsc` is absent. The lockfile, full type check, Vitest run, built browser test, Firefox checks and performance measurements remain pending.
+The inspected environment exposes Node `24.22.1`, npm `11.9.0`, Python `3.12.14`, system Chromium, and ffmpeg. Forty-one dependency-free checks, 34 Vitest checks, full type checking/build and three built-browser scenarios pass. Dependencies were installed on an Ubuntu 24.04 GitHub runner, archived in three parts, hash-verified and restored locally. Local Vitest/build also pass. Direct npm access and local HTTP binding remain restricted by the command sandbox; browser tests run in Actions. Firefox and performance measurements remain pending.
 
-Scripts are defined for `dev`, `build`, `preview`, `check`, `test:sim`, and `test:e2e`. The dependency-free `test:local` and `demo` commands already execute on Node 24. `npm ci` becomes usable after successful installation creates the lockfile. The planned CI workflow should run checks/build/simulation scenarios, with browser acceptance against the built preview; it is not implemented yet.
+Scripts are defined for `dev`, `build`, `preview`, `preview:static`, `check`, `test:sim`, and `test:e2e`. The dependency-free `test:local` and `demo` commands execute on Node 24. The committed lockfile supports `npm ci` on hosts with network access. The CI workflow runs checks/build/simulation and browser acceptance, and uploads `dist`, dependency parts, the lockfile and the browser report.
 
 | Acceptance group | Checks to automate or observe |
 | --- | --- |
