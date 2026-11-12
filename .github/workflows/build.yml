@@ -1,0 +1,78 @@
+name: Bunker build and tests
+
+on:
+  push:
+    branches: ["codex/bunker-engineering-ci"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bunker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install exact top-level dependencies
+        run: |
+          if test -f package-lock.json; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+      - name: Archive Linux dependencies for the cloud workspace
+        run: |
+          mkdir -p ci-artifacts
+          tar -czf ci-artifacts/dependencies-linux-x64.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bunker-dependencies-linux-x64
+          path: ci-artifacts/dependencies-linux-x64.tar.gz
+          compression-level: 0
+          retention-days: 7
+      - name: Dependency-free engineering checks
+        run: npm run test:local
+      - name: Simulation and content contracts
+        run: npm run test:sim
+      - name: Type check and build
+        id: build
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser acceptance
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        with:
+          name: bunker-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bunker-lockfile
+          path: package-lock.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bunker-browser-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

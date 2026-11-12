@@ -1,0 +1,383 @@
+{
+  "status": "approved_working_layout_v1",
+  "units": "m",
+  "height": 3,
+  "floor_elevations": {
+    "upper": 3,
+    "lower": 0
+  },
+  "rooms": [
+    {
+      "id": "u_corridor",
+      "floor": "upper",
+      "name": "Коридор 1",
+      "x": 0,
+      "y": 0,
+      "width": 20,
+      "depth": 2,
+      "area": 40,
+      "volume": 120
+    },
+    {
+      "id": "u_bed1",
+      "floor": "upper",
+      "name": "Спальня 1",
+      "x": 2,
+      "y": 2,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "u_bed2",
+      "floor": "upper",
+      "name": "Спальня 2",
+      "x": 2,
+      "y": 6,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "u_med",
+      "floor": "upper",
+      "name": "Медпункт",
+      "x": 8,
+      "y": 2,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "u_drain",
+      "floor": "upper",
+      "name": "Дренажная насосная",
+      "x": 14,
+      "y": 2,
+      "width": 4,
+      "depth": 8,
+      "area": 32,
+      "volume": 96
+    },
+    {
+      "id": "u_canteen",
+      "floor": "upper",
+      "name": "Столовая",
+      "x": 2,
+      "y": -8,
+      "width": 4,
+      "depth": 8,
+      "area": 32,
+      "volume": 96
+    },
+    {
+      "id": "u_store1",
+      "floor": "upper",
+      "name": "Склад 1",
+      "x": 8,
+      "y": -4,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "u_store2",
+      "floor": "upper",
+      "name": "Склад 2",
+      "x": 8,
+      "y": -8,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "u_control",
+      "floor": "upper",
+      "name": "Диспетчерская",
+      "x": 14,
+      "y": -4,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "l_corridor",
+      "floor": "lower",
+      "name": "Коридор 2",
+      "x": 0,
+      "y": 0,
+      "width": 20,
+      "depth": 2,
+      "area": 40,
+      "volume": 120
+    },
+    {
+      "id": "l_geo",
+      "floor": "lower",
+      "name": "Геотермальная насосная",
+      "x": 2,
+      "y": 2,
+      "width": 4,
+      "depth": 8,
+      "area": 32,
+      "volume": 96
+    },
+    {
+      "id": "l_rat1",
+      "floor": "lower",
+      "name": "Лаб. крыс 1",
+      "x": 8,
+      "y": 2,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "l_rat2",
+      "floor": "lower",
+      "name": "Лаб. крыс 2",
+      "x": 8,
+      "y": 6,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "l_fungus",
+      "floor": "lower",
+      "name": "Лаборатория плесени",
+      "x": 14,
+      "y": 2,
+      "width": 4,
+      "depth": 6,
+      "area": 24,
+      "volume": 72
+    },
+    {
+      "id": "l_battery",
+      "floor": "lower",
+      "name": "Аккумуляторная",
+      "x": 2,
+      "y": -4,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "l_store3",
+      "floor": "lower",
+      "name": "Склад 3",
+      "x": 8,
+      "y": -4,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    },
+    {
+      "id": "l_store4",
+      "floor": "lower",
+      "name": "Склад 4",
+      "x": 8,
+      "y": -8,
+      "width": 4,
+      "depth": 4,
+      "area": 16,
+      "volume": 48
+    }
+  ],
+  "doors": [
+    {
+      "rooms": [
+        "u_corridor",
+        "u_bed1"
+      ],
+      "x": 4,
+      "y": 2,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "u_bed1",
+        "u_bed2"
+      ],
+      "x": 4,
+      "y": 6,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "u_corridor",
+        "u_med"
+      ],
+      "x": 10,
+      "y": 2,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "u_corridor",
+        "u_drain"
+      ],
+      "x": 16,
+      "y": 2,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "u_corridor",
+        "u_canteen"
+      ],
+      "x": 4,
+      "y": 0,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "u_corridor",
+        "u_store1"
+      ],
+      "x": 10,
+      "y": 0,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "u_store1",
+        "u_store2"
+      ],
+      "x": 10,
+      "y": -4,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "u_corridor",
+        "u_control"
+      ],
+      "x": 16,
+      "y": 0,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "l_corridor",
+        "l_geo"
+      ],
+      "x": 4,
+      "y": 2,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "l_corridor",
+        "l_rat1"
+      ],
+      "x": 10,
+      "y": 2,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "l_rat1",
+        "l_rat2"
+      ],
+      "x": 10,
+      "y": 6,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "l_corridor",
+        "l_fungus"
+      ],
+      "x": 16,
+      "y": 2,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "l_corridor",
+        "l_battery"
+      ],
+      "x": 4,
+      "y": 0,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "l_corridor",
+        "l_store3"
+      ],
+      "x": 10,
+      "y": 0,
+      "initial_state": null
+    },
+    {
+      "rooms": [
+        "l_store3",
+        "l_store4"
+      ],
+      "x": 10,
+      "y": -4,
+      "initial_state": null
+    }
+  ],
+  "stairs": [
+    {
+      "id": "main",
+      "label": "А",
+      "rooms": [
+        "u_corridor",
+        "l_corridor"
+      ],
+      "x": 19.3,
+      "y": 1,
+      "flow_capacity_m3_s": 0.16,
+      "initial_state": null
+    },
+    {
+      "id": "service",
+      "label": "Б",
+      "rooms": [
+        "u_corridor",
+        "l_corridor"
+      ],
+      "x": 0.7,
+      "y": 1,
+      "flow_capacity_m3_s": 0.16,
+      "initial_state": null
+    }
+  ],
+  "accessible_exit": {
+    "room": "u_corridor",
+    "x": 0,
+    "y": 0.5
+  },
+  "blocked_main_entrance": {
+    "room": "u_corridor",
+    "x": 20,
+    "y": 0.5
+  },
+  "corridor_controls": [
+    {
+      "room": "u_corridor",
+      "x": 1.75,
+      "y": 0.35
+    },
+    {
+      "room": "l_corridor",
+      "x": 18.25,
+      "y": 0.35
+    }
+  ]
+}

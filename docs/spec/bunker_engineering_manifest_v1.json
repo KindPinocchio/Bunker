@@ -1,0 +1,625 @@
+{
+  "version": "1.0",
+  "status": "implementation_allocation_of_accepted_counts",
+  "relays": [
+    {
+      "id": "heat_u_corridor",
+      "kind": "heat_branch",
+      "room": "u_corridor",
+      "target": "u_corridor"
+    },
+    {
+      "id": "heat_u_bed1",
+      "kind": "heat_branch",
+      "room": "u_bed1",
+      "target": "u_bed1"
+    },
+    {
+      "id": "heat_u_bed2",
+      "kind": "heat_branch",
+      "room": "u_bed2",
+      "target": "u_bed2"
+    },
+    {
+      "id": "heat_u_med",
+      "kind": "heat_branch",
+      "room": "u_med",
+      "target": "u_med"
+    },
+    {
+      "id": "heat_u_drain",
+      "kind": "heat_branch",
+      "room": "u_drain",
+      "target": "u_drain"
+    },
+    {
+      "id": "heat_u_canteen",
+      "kind": "heat_branch",
+      "room": "u_canteen",
+      "target": "u_canteen"
+    },
+    {
+      "id": "heat_u_store1",
+      "kind": "heat_branch",
+      "room": "u_store1",
+      "target": "u_store1"
+    },
+    {
+      "id": "heat_u_store2",
+      "kind": "heat_branch",
+      "room": "u_store2",
+      "target": "u_store2"
+    },
+    {
+      "id": "heat_l_corridor",
+      "kind": "heat_branch",
+      "room": "l_corridor",
+      "target": "l_corridor"
+    },
+    {
+      "id": "heat_l_geo",
+      "kind": "heat_branch",
+      "room": "l_geo",
+      "target": "l_geo"
+    },
+    {
+      "id": "heat_l_rat1",
+      "kind": "heat_branch",
+      "room": "l_rat1",
+      "target": "l_rat1"
+    },
+    {
+      "id": "heat_l_rat2",
+      "kind": "heat_branch",
+      "room": "l_rat2",
+      "target": "l_rat2"
+    },
+    {
+      "id": "heat_l_fungus",
+      "kind": "heat_branch",
+      "room": "l_fungus",
+      "target": "l_fungus"
+    },
+    {
+      "id": "heat_l_battery",
+      "kind": "heat_branch",
+      "room": "l_battery",
+      "target": "l_battery"
+    },
+    {
+      "id": "heat_l_store3",
+      "kind": "heat_branch",
+      "room": "l_store3",
+      "target": "l_store3"
+    },
+    {
+      "id": "heat_l_store4",
+      "kind": "heat_branch",
+      "room": "l_store4",
+      "target": "l_store4"
+    },
+    {
+      "id": "geo_pump_1_contactor",
+      "kind": "motor_contactor",
+      "room": "l_geo",
+      "target": "geo_1"
+    },
+    {
+      "id": "geo_pump_2_contactor",
+      "kind": "motor_contactor",
+      "room": "l_geo",
+      "target": "geo_2"
+    },
+    {
+      "id": "geo_pump_3_contactor",
+      "kind": "motor_contactor",
+      "room": "l_geo",
+      "target": "geo_3"
+    },
+    {
+      "id": "drain_pump_1_contactor",
+      "kind": "motor_contactor",
+      "room": "u_drain",
+      "target": "drain_1"
+    },
+    {
+      "id": "drain_pump_2_contactor",
+      "kind": "motor_contactor",
+      "room": "u_drain",
+      "target": "drain_2"
+    },
+    {
+      "id": "drain_pump_3_contactor",
+      "kind": "motor_contactor",
+      "room": "u_drain",
+      "target": "drain_3"
+    },
+    {
+      "id": "external_feed",
+      "kind": "external_feed",
+      "room": "u_corridor",
+      "target": "complex_bus"
+    },
+    {
+      "id": "light_01",
+      "kind": "lighting",
+      "room": "u_bed1",
+      "targets": [
+        "u_bed1",
+        "u_bed2"
+      ]
+    },
+    {
+      "id": "light_02",
+      "kind": "lighting",
+      "room": "u_store1",
+      "targets": [
+        "u_store1",
+        "u_store2"
+      ]
+    },
+    {
+      "id": "light_03",
+      "kind": "lighting",
+      "room": "l_store3",
+      "targets": [
+        "l_store3",
+        "l_store4"
+      ]
+    },
+    {
+      "id": "light_04",
+      "kind": "lighting",
+      "room": "l_rat1",
+      "targets": [
+        "l_rat1",
+        "l_rat2"
+      ]
+    },
+    {
+      "id": "light_05",
+      "kind": "lighting",
+      "room": "u_corridor",
+      "targets": [
+        "u_corridor",
+        "l_corridor"
+      ]
+    },
+    {
+      "id": "light_06",
+      "kind": "lighting",
+      "room": "u_med",
+      "targets": [
+        "u_med"
+      ]
+    },
+    {
+      "id": "light_07",
+      "kind": "lighting",
+      "room": "u_drain",
+      "targets": [
+        "u_drain"
+      ]
+    },
+    {
+      "id": "light_08",
+      "kind": "lighting",
+      "room": "u_canteen",
+      "targets": [
+        "u_canteen"
+      ]
+    },
+    {
+      "id": "light_09",
+      "kind": "lighting",
+      "room": "u_control",
+      "targets": [
+        "u_control"
+      ]
+    },
+    {
+      "id": "light_10",
+      "kind": "lighting",
+      "room": "l_geo",
+      "targets": [
+        "l_geo"
+      ]
+    },
+    {
+      "id": "light_11",
+      "kind": "lighting",
+      "room": "l_fungus",
+      "targets": [
+        "l_fungus"
+      ]
+    },
+    {
+      "id": "light_12",
+      "kind": "lighting",
+      "room": "l_battery",
+      "targets": [
+        "l_battery"
+      ]
+    }
+  ],
+  "room_sensor_cabinets": [
+    {
+      "room": "u_corridor",
+      "sensors": [
+        {
+          "id": "u_corridor_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_corridor_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_u_corridor",
+        "light_05"
+      ]
+    },
+    {
+      "room": "u_bed1",
+      "sensors": [
+        {
+          "id": "u_bed1_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_bed1_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_u_bed1",
+        "light_01"
+      ]
+    },
+    {
+      "room": "u_bed2",
+      "sensors": [
+        {
+          "id": "u_bed2_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_bed2_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_u_bed2"
+      ]
+    },
+    {
+      "room": "u_med",
+      "sensors": [
+        {
+          "id": "u_med_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_med_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_u_med",
+        "light_06"
+      ]
+    },
+    {
+      "room": "u_drain",
+      "sensors": [
+        {
+          "id": "u_drain_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_drain_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_u_drain",
+        "light_07"
+      ]
+    },
+    {
+      "room": "u_canteen",
+      "sensors": [
+        {
+          "id": "u_canteen_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_canteen_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_u_canteen",
+        "light_08"
+      ]
+    },
+    {
+      "room": "u_store1",
+      "sensors": [
+        {
+          "id": "u_store1_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_store1_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_u_store1",
+        "light_02"
+      ]
+    },
+    {
+      "room": "u_store2",
+      "sensors": [
+        {
+          "id": "u_store2_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_store2_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_u_store2"
+      ]
+    },
+    {
+      "room": "u_control",
+      "sensors": [
+        {
+          "id": "u_control_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "u_control_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "light_09"
+      ]
+    },
+    {
+      "room": "l_corridor",
+      "sensors": [
+        {
+          "id": "l_corridor_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "l_corridor_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_l_corridor"
+      ]
+    },
+    {
+      "room": "l_geo",
+      "sensors": [
+        {
+          "id": "l_geo_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "l_geo_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_l_geo",
+        "light_10"
+      ]
+    },
+    {
+      "room": "l_rat1",
+      "sensors": [
+        {
+          "id": "l_rat1_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "l_rat1_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_l_rat1",
+        "light_04"
+      ]
+    },
+    {
+      "room": "l_rat2",
+      "sensors": [
+        {
+          "id": "l_rat2_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "l_rat2_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_l_rat2"
+      ]
+    },
+    {
+      "room": "l_fungus",
+      "sensors": [
+        {
+          "id": "l_fungus_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "l_fungus_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_l_fungus",
+        "light_11"
+      ]
+    },
+    {
+      "room": "l_battery",
+      "sensors": [
+        {
+          "id": "l_battery_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "l_battery_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_l_battery",
+        "light_12"
+      ]
+    },
+    {
+      "room": "l_store3",
+      "sensors": [
+        {
+          "id": "l_store3_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "l_store3_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_l_store3",
+        "light_03"
+      ]
+    },
+    {
+      "room": "l_store4",
+      "sensors": [
+        {
+          "id": "l_store4_temp",
+          "kind": "temperature"
+        },
+        {
+          "id": "l_store4_water",
+          "kind": "water"
+        }
+      ],
+      "relay_ids": [
+        "heat_l_store4"
+      ]
+    }
+  ],
+  "battery_charge_sensor": {
+    "id": "battery_charge",
+    "kind": "charge",
+    "room": "l_battery"
+  },
+  "heating_pipes": [
+    {
+      "id": "pipe_u_corridor",
+      "room": "u_corridor"
+    },
+    {
+      "id": "pipe_u_bed1",
+      "room": "u_bed1"
+    },
+    {
+      "id": "pipe_u_bed2",
+      "room": "u_bed2"
+    },
+    {
+      "id": "pipe_u_med",
+      "room": "u_med"
+    },
+    {
+      "id": "pipe_u_drain",
+      "room": "u_drain"
+    },
+    {
+      "id": "pipe_u_canteen",
+      "room": "u_canteen"
+    },
+    {
+      "id": "pipe_u_store1",
+      "room": "u_store1"
+    },
+    {
+      "id": "pipe_u_store2",
+      "room": "u_store2"
+    },
+    {
+      "id": "pipe_l_corridor",
+      "room": "l_corridor"
+    },
+    {
+      "id": "pipe_l_geo",
+      "room": "l_geo"
+    },
+    {
+      "id": "pipe_l_rat1",
+      "room": "l_rat1"
+    },
+    {
+      "id": "pipe_l_rat2",
+      "room": "l_rat2"
+    },
+    {
+      "id": "pipe_l_fungus",
+      "room": "l_fungus"
+    },
+    {
+      "id": "pipe_l_battery",
+      "room": "l_battery"
+    },
+    {
+      "id": "pipe_l_store3",
+      "room": "l_store3"
+    },
+    {
+      "id": "pipe_l_store4",
+      "room": "l_store4"
+    }
+  ],
+  "motor_cabinets": [
+    {
+      "room": "l_geo",
+      "relay_ids": [
+        "geo_pump_1_contactor",
+        "geo_pump_2_contactor",
+        "geo_pump_3_contactor"
+      ]
+    },
+    {
+      "room": "u_drain",
+      "relay_ids": [
+        "drain_pump_1_contactor",
+        "drain_pump_2_contactor",
+        "drain_pump_3_contactor"
+      ]
+    }
+  ],
+  "external_board": {
+    "room": "u_corridor",
+    "relay_id": "external_feed",
+    "breaker_reset_s": 5
+  },
+  "note": "Lighting relays have an always-on control signal while power exists; failed relay removes light in its fixed group. Motor relays cannot override dead CBU or out-of-service switches."
+}

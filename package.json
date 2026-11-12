@@ -1,0 +1,29 @@
+{
+  "name": "bunker",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "preview:static": "node scripts/serve-dist.mjs",
+    "check": "tsc --noEmit",
+    "test:sim": "vitest run",
+    "test:local": "node tests/sim/fungus-temperature.test.mjs && node tests/local/engineering.test.mjs",
+    "demo": "node scripts/engineering-demo.mjs",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "pixi.js": "8.14.0",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "24.9.1",
+    "typescript": "5.9.3",
+    "vite": "7.1.12",
+    "vitest": "3.2.4"
+  }
+}

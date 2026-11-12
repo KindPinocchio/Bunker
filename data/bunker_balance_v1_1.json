@@ -1,0 +1,422 @@
+{
+  "version": "1.1",
+  "status": "accepted_starting_balance_by_delegation",
+  "simulation": {
+    "tick_s": 1,
+    "rng": "PCG32",
+    "streams": [
+      "world",
+      "loot",
+      "fungus",
+      "rats",
+      "equipment"
+    ],
+    "numeric_epsilon": 1e-09
+  },
+  "player": {
+    "walk_m_s": 1.5,
+    "interaction_m": 1.5,
+    "sight_m": 10,
+    "flashlight_range_m": 6,
+    "flashlight_cone_deg": 50,
+    "flashlight_near_m": 1,
+    "lethal_points": 100,
+    "warning_on": 30,
+    "warning_off": 20,
+    "critical_on": 80,
+    "critical_off": 70,
+    "blink_hz": 2,
+    "death_fade_s": 1.5,
+    "death_noise_crossfade_s": 0.75,
+    "blur_px_min": 4,
+    "blur_px_max": 10,
+    "cold_rate_coefficient": 0.05555555555555555,
+    "heat_rate_slope": 0.050505050505050504,
+    "heat_rate_intercept_temperature_c": 29,
+    "cold_recovery_temperature_offset_c": 14,
+    "cold_recovery_divisor": 6,
+    "heat_recovery_divisor": 10,
+    "drowning_depth_cm": 150,
+    "oxygen_rate_pp_s": 1.6666666666666667,
+    "poison_recovery_pp_s": 0.1
+  },
+  "clothing": {
+    "warmth_max": 100,
+    "chemical_max": 100,
+    "warmth_caps": {
+      "boots": 20,
+      "trousers": 25,
+      "jacket": 35,
+      "head": 10,
+      "gloves": 10
+    },
+    "chemical_caps": {
+      "boots": 20,
+      "trousers": 20,
+      "jacket": 20,
+      "head": 20,
+      "gloves": 20
+    },
+    "grades": [
+      0,
+      0.5,
+      1
+    ],
+    "durability": {
+      "ordinary": 100,
+      "insulated": 160,
+      "chemical": 180,
+      "combined": 220,
+      "gas_mask": 240
+    },
+    "movement_damage_per_m": 0.015,
+    "heavy_carry_extra_per_m": 0.02,
+    "movement_shares": {
+      "boots": 0.6,
+      "trousers": 0.15,
+      "jacket": 0.1,
+      "head": 0.05,
+      "gloves": 0.1
+    },
+    "cold_damage_coefficient": 0.003,
+    "hot_air_threshold_c": 35,
+    "hot_air_damage_coefficient": 0.01,
+    "hot_water_damage_coefficient": 0.02,
+    "fungus_damage_per_s_at_full": 0.2,
+    "water_wet_threshold_cm": {
+      "boots": 0,
+      "trousers": 30,
+      "jacket": 80,
+      "gloves": 100,
+      "head": 150
+    }
+  },
+  "pump": {
+    "nominal_life_s": 1800,
+    "dry_multiplier": 5,
+    "fungus_wear_extra": 2,
+    "wear_flow_loss_at_full": 0.4,
+    "fungus_flow_loss_at_full": 0.4,
+    "fault_start_wear": 50,
+    "fault_max": 0.4,
+    "neighbor_wear_cap": 0.4,
+    "restart_retry_s": 5,
+    "staging_up_s": 5,
+    "drain_staging_down_s": 5,
+    "heat_staging_down_s": 10,
+    "water_trend_improvement_cm": 0.01,
+    "heat_trend_improvement_c": 0.1,
+    "geothermal_nominal_kw": 1.5,
+    "drain_nominal_kw": 1.0,
+    "fungus_effect_active_only": true
+  },
+  "power": {
+    "line_capacity_kw": 10,
+    "overload_grace_s": 10,
+    "breaker_reset_action_s": 5,
+    "battery_nominal_kj": 900,
+    "battery_charge_kw": 1.5,
+    "cbu_kw": 0.2,
+    "sensor_kw_each": 0.001,
+    "relay_kw_each": 0.001,
+    "light_kw_per_room": 0.05,
+    "closed_door_kw_each": 0.01,
+    "battery_light_brightness": 0.45,
+    "battery_light_power_factor": 0.45
+  },
+  "engineering": {
+    "reference_area_m2": 16,
+    "reference_volume_m3": 48,
+    "cooling_fraction_s": 0.01,
+    "max_temperature_c": 100,
+    "floor_delta_m": 3,
+    "stair_flow_m3_s": 0.16,
+    "drain_nominal_m3_s_each": 0.16,
+    "pipe_max_leak_m3_s": 0.16,
+    "pipe_temperature_gain_reference_c_s": 1,
+    "heating_on_c": 15,
+    "heating_off_c": 40,
+    "flood_close_cm": 10,
+    "flood_release_cm": 0,
+    "pipe_count_per_heated_room": 1
+  },
+  "fungus": {
+    "growth_max_pp_s": 0.33,
+    "spread_probability_per_s": 0.01,
+    "weights": {
+      "ordinary": 1,
+      "cabinet_invasion": 0.2,
+      "adjacent_cabinets": 0.5
+    },
+    "damage_pp_s_at_full": {
+      "relay": 0.3333333333333333,
+      "sensor": 0.3333333333333333,
+      "pipe": 0.16666666666666666,
+      "cbu": 0.1111111111111111,
+      "battery": 0.08333333333333333
+    },
+    "death_pp_s_points": [
+      [
+        50,
+        0.1
+      ],
+      [
+        60,
+        0.3
+      ],
+      [
+        70,
+        1
+      ],
+      [
+        80,
+        5
+      ],
+      [
+        90,
+        10
+      ],
+      [
+        100,
+        15
+      ]
+    ],
+    "surface_patch_m": 2,
+    "portable_damage_pp_s_at_full": 0.05,
+    "portable_cap_percent": 30,
+    "temperature_response": {
+      "kind": "triangular",
+      "min_c": 5,
+      "optimum_c": 30,
+      "max_c": 50
+    }
+  },
+  "fault_signals": {
+    "bridge_probability_coefficient": 0.02,
+    "episode_duration_s": [
+      10,
+      30
+    ],
+    "false_temperature_choices_c": [
+      -20,
+      25
+    ],
+    "false_water_choices_cm": [
+      0,
+      20
+    ],
+    "false_charge_choices_percent": [
+      10,
+      100
+    ]
+  },
+  "aerosol": {
+    "doses": 5,
+    "application_s": 2,
+    "protection_s": 120,
+    "initial_full_cans": 4,
+    "upper_cans": 2,
+    "lower_cans": 2
+  },
+  "pollen": {
+    "emission_probability_coefficient": 0.0015,
+    "max_clouds_per_room": 2,
+    "max_clouds_world": 12,
+    "life_s": 30,
+    "fade_s": 5,
+    "radius_m": 0.8,
+    "drift_m_s": 0.15,
+    "direction_period_s": 5,
+    "poison_pp_s": 1
+  },
+  "rats": {
+    "count": 10,
+    "burrows": 4,
+    "home_assignment_counts": [
+      3,
+      3,
+      2,
+      2
+    ],
+    "walk_m_s": 0.8,
+    "panic_m_s": 1.6,
+    "swim_m_s": 0.5,
+    "player_panic_m": 3,
+    "player_safe_m": 5,
+    "player_safe_delay_s": 5,
+    "emerge_safe_delay_s": 10,
+    "hunger_initial_range": [
+      20,
+      60
+    ],
+    "hunger_gain_s": 0.2,
+    "eat_start": 60,
+    "eat_stop": 20,
+    "hunger_reduction_s": 5,
+    "fungus_eaten_pp_s": 0.5,
+    "search_initial_m": 2,
+    "search_step_m": 0.5,
+    "search_period_s": 5,
+    "spore_carrier_s": 300,
+    "spore_attempt_probability_s": 0.02,
+    "spore_radius_m": 3.5,
+    "burrow_heat_death_coefficient": 0.005,
+    "burrow_heat_death_probability_cap": 0.25
+  },
+  "initial": {
+    "temperature_c": 20,
+    "water_cm": 0,
+    "battery_charge_fraction": 1,
+    "doors": "open",
+    "door_mode": "auto",
+    "valves": "open",
+    "pumps": "in_service",
+    "pump_wear_range": [
+      5,
+      15
+    ],
+    "installed_damage_range": [
+      0,
+      3
+    ],
+    "loose_part_damage_range": [
+      0,
+      15
+    ],
+    "main_fungus_nodes": 3,
+    "main_fungus_range": [
+      50,
+      70
+    ],
+    "minor_foci": 8,
+    "minor_fungus_range": [
+      1,
+      5
+    ],
+    "found_clothing_durability_fraction": [
+      0.5,
+      1
+    ],
+    "relay_count": 35
+  },
+  "loot": {
+    "loose_item_count": 72,
+    "category_counts": {
+      "engineering": 16,
+      "clothing": 14,
+      "aerosol": 4,
+      "injectors": 3,
+      "documents": 17,
+      "valuables": 10,
+      "junk": 8
+    },
+    "rarity_probabilities": [
+      0.89,
+      0.1,
+      0.01
+    ],
+    "rarity_value_multipliers": [
+      1,
+      4,
+      8
+    ],
+    "capacities": {
+      "shelf": 4,
+      "nightstand": 4,
+      "rack": 8,
+      "safe": 4
+    },
+    "base_prices_by_catalog_number": {
+      "1": 15,
+      "2": 35,
+      "3": 35,
+      "4": 60,
+      "5": 0,
+      "6": 2,
+      "7": 10,
+      "8": 350,
+      "9": 8,
+      "10": 6,
+      "11": 15,
+      "12": 4,
+      "13": 4,
+      "14": 80,
+      "15": 650,
+      "16": 550,
+      "17": 220,
+      "18": 800,
+      "19": 100,
+      "20": 25,
+      "21": 50,
+      "22": 200,
+      "23": 300,
+      "24": 140,
+      "25": 250,
+      "26": 450,
+      "27": 0,
+      "28": 1,
+      "29": 0,
+      "30": 3
+    },
+    "containers_per_room": {
+      "u_corridor": 0,
+      "u_bed1": 3,
+      "u_bed2": 3,
+      "u_med": 2,
+      "u_drain": 2,
+      "u_canteen": 2,
+      "u_store1": 4,
+      "u_store2": 4,
+      "u_control": 3,
+      "l_corridor": 0,
+      "l_geo": 2,
+      "l_rat1": 3,
+      "l_rat2": 3,
+      "l_fungus": 3,
+      "l_battery": 1,
+      "l_store3": 3,
+      "l_store4": 3
+    },
+    "clothing_price_protection_divisor": 50
+  },
+  "actions_s": {
+    "relay_install": 10,
+    "relay_remove": 10,
+    "sensor_install": 10,
+    "sensor_remove": 10,
+    "pipe_install": 10,
+    "pipe_remove": 10,
+    "pump_inspect": 10,
+    "cbu_diagnostics": 5,
+    "detail_inspect": 5,
+    "cabinet_open": 2,
+    "cabinet_close": 2,
+    "wear": 5,
+    "undress": 5,
+    "replace_clothing": 10,
+    "shelf_search": 5,
+    "nightstand_search": 5,
+    "rack_search": 10,
+    "safe_search": 20,
+    "simple_control": 0,
+    "transfer": 0,
+    "drop": 0
+  },
+  "poison": {
+    "floor_pp_s": 0.16666666666666666,
+    "cabinet_pp_s": 0.5,
+    "cabinet_radius_m": 1.5,
+    "pollen_pp_s": 1,
+    "carried_pp_s": 0.25,
+    "worn_pp_s_each": 0.1,
+    "backpack_contact_pp": 2,
+    "cabinet_open_pp": 3,
+    "cabinet_close_pp": 1,
+    "pickup_drop_pp": 1,
+    "wear_undress_pp": 2,
+    "component_contact_pp": 2,
+    "control_contact_pp": 1,
+    "max_chemical_divisor": 6,
+    "gas_mask_pollen_multiplier": 0.25
+  }
+}
