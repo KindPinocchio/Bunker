@@ -106,17 +106,27 @@ export function advanceBedroomFrame(world:WorldState,content:Content):WorldState
   const b=world.bedroom!;b.frame++;
   if(b.action)return world;
   let dx=b.dx,dy=b.dy,remaining=content.balance.player.walk_m_s/MOTION_HZ;
-  if(b.path.length){const target=b.path[0]!;dx=target.x-world.player.x;dy=target.y-world.player.y;remaining=Math.min(remaining,Math.hypot(dx,dy));if(Math.hypot(dx,dy)<0.001){b.path.shift();return world;}}
-  const length=Math.hypot(dx,dy);if(!length)return world;
-  const mx=dx/length*remaining,my=dy/length*remaining,oldX=world.player.x,oldY=world.player.y;
-  if(walkable(world.player.x+mx,world.player.y+my)){world.player.x+=mx;world.player.y+=my;}
-  else if(!b.path.length){if(walkable(world.player.x+mx,world.player.y))world.player.x+=mx;if(walkable(world.player.x,world.player.y+my))world.player.y+=my;}
-  else b.path=[];
+  const oldX=world.player.x,oldY=world.player.y;
+  if(b.path.length){
+    while(b.path.length&&remaining>1e-9){
+      const target=b.path[0]!;dx=target.x-world.player.x;dy=target.y-world.player.y;
+      const length=Math.hypot(dx,dy);if(length<1e-9){b.path.shift();continue;}
+      const step=Math.min(remaining,length),nx=world.player.x+dx/length*step,ny=world.player.y+dy/length*step;
+      if(!walkable(nx,ny)){b.path=[];break;}
+      world.player.x=nx;world.player.y=ny;remaining-=step;
+      if(step===length)b.path.shift();
+    }
+  }else{
+    const length=Math.hypot(dx,dy);if(!length)return world;
+    const mx=dx/length*remaining,my=dy/length*remaining;
+    if(walkable(world.player.x+mx,world.player.y+my)){world.player.x+=mx;world.player.y+=my;}
+    else{if(walkable(world.player.x+mx,world.player.y))world.player.x+=mx;if(walkable(world.player.x,world.player.y+my))world.player.y+=my;}
+  }
   const distance=Math.hypot(world.player.x-oldX,world.player.y-oldY);
   const heavy=world.player.hands&&content.items.find(i=>i.id===world.items[world.player.hands!]!.typeId)!.carry==="hands";
   const damage=distance*(content.balance.clothing.movement_damage_per_m+(heavy?content.balance.clothing.heavy_carry_extra_per_m:0));
   for(const [slot,id] of Object.entries(world.player.clothing))if(id){const item=world.items[id]!;if(item.durability!==null){item.durability=Math.max(0,item.durability-damage*(content.balance.clothing.movement_shares[slot]??0));if(item.durability===0){release(world,item);item.location={kind:"destroyed"};}}}
-  b.facingX=dx/length;b.facingY=dy/length;
+  const length=Math.hypot(dx,dy);if(length){b.facingX=dx/length;b.facingY=dy/length;}
   return world;
 }
 export function finishBedroomAction(world:WorldState):void {
