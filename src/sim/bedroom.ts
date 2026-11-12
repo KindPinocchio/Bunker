@@ -96,7 +96,7 @@ export function itemAccessible(world: WorldState, item: ItemState, content: Cont
     if (["backpack", "hands", "worn"].includes(item.location.kind))
         return true;
     if (item.location.kind === "floor")
-        return inReach(world, item.location.x, item.location.y, content);
+        return item.location.roomId === world.player.roomId && inReach(world, item.location.x, item.location.y, content);
     if (item.location.kind === "container") {
         try {
             containerAccess(world, item.location.containerId, content);
