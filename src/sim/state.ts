@@ -32,7 +32,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("walk-to"), x: value, y: value }),
   z.strictObject({ type: z.literal("move-input"), dx: value.int().min(-1).max(1), dy: value.int().min(-1).max(1) }),
   z.strictObject({ type: z.literal("search-container"), containerId: text }),
-  z.strictObject({ type: z.literal("transfer-item"), itemId: text, to: z.enum(["backpack","hands","floor"]) }),
+  z.strictObject({ type: z.literal("transfer-item"), itemId: text, to: z.enum(["backpack","hands","floor","container"]), containerId: text.optional() }),
   z.strictObject({ type: z.literal("wear-item"), itemId: text }),
   z.strictObject({ type: z.literal("remove-clothing"), slot: slotSchema, to: z.enum(["backpack","floor"]) }),
   z.strictObject({ type: z.literal("door-mode"), doorId: text, mode: doorModeSchema }),

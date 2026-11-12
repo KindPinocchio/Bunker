@@ -10,9 +10,9 @@ import { loadCheckpoint, saveCheckpoint } from "./persistence/checkpoint";
 
 const root = document.querySelector<HTMLDivElement>("#app")!;
 root.innerHTML = `
-  <header class="masthead"><a class="brand" href="/" aria-label="Бункер, стенд симуляции"><span class="brand-mark">Б</span><span>ПОДЗЕМНЫЙ КОМПЛЕКС<small>БЮРО АВТОНОМНЫХ СИСТЕМ</small></span></a><div class="header-meta"><span class="status-dot"></span> СЛУЖЕБНЫЙ СТЕНД <span class="version">СБОРКА 0.2 / БАЛАНС 1.1</span></div></header>
+  <header class="masthead"><a class="brand" href="/" aria-label="Бункер, стенд симуляции"><span class="brand-mark">Б</span><span>ПОДЗЕМНЫЙ КОМПЛЕКС<small>БЮРО АВТОНОМНЫХ СИСТЕМ</small></span></a><div class="header-meta"><span class="status-dot"></span> СЛУЖЕБНЫЙ СТЕНД <span class="version">СБОРКА 0.3 / БАЛАНС 1.1</span></div></header>
   <main>
-    <section class="intro"><div><p class="eyebrow">ЭТАП 03 — ИНЖЕНЕРНЫЙ СТЕНД</p><h1>Системы под наблюдением<span>.</span></h1><p class="lede">Один комплекс. Независимые процессы. Воспроизводимое состояние.</p></div><div class="mode-badge">РЕЖИМ РАЗРАБОТЧИКА<small>Игровая сцена и биология — следующие этапы</small></div></section>
+    <section class="intro"><div><p class="eyebrow">ЭТАП 03 — ИНЖЕНЕРНЫЙ СТЕНД</p><h1>Системы под наблюдением<span>.</span></h1><p class="lede">Один комплекс. Независимые процессы. Воспроизводимое состояние.</p></div><div class="mode-badge">РЕЖИМ РАЗРАБОТЧИКА<small>Игровая спальня доступна на главной странице</small></div></section>
     <section class="control-panel" aria-label="Управление стендом">
       <form id="seed-form"><label for="seed">SEED ЭКСПЕДИЦИИ</label><div class="input-row"><input id="seed" name="seed" value="bunker-001" maxlength="200" required autocomplete="off"/><button type="submit" class="button quiet">Создать</button></div></form>
       <div class="clock-box"><span class="eyebrow">ЛОГИЧЕСКОЕ ВРЕМЯ</span><strong id="time">00:00</strong><span>тик <b id="tick" data-testid="tick">0</b> · шаг 1 с</span></div>
@@ -142,7 +142,7 @@ async function boot(): Promise<void> {
   doorSelect.addEventListener("change", update);
   for (const floor of ["upper", "lower"] as const) element(`#${floor}`).addEventListener("click", () => { plan.setFloor(floor); element("#upper").setAttribute("aria-pressed", String(floor === "upper")); element("#lower").setAttribute("aria-pressed", String(floor === "lower")); });
   element("#save").addEventListener("click", () => void operate(async () => { syncClock(); const snapshot = session.snapshot(); await saveCheckpoint(snapshot); notice(`Сохранено локально: тик ${snapshot.world.tick}.`); }));
-  const replaceSession = (input: unknown) => { const restored = Session.restore(content, input); restored.pause(); session = restored; element<HTMLInputElement>("#seed").value = session.seed; lastFrame = performance.now(); notice(`Снимок загружен: тик ${session.tick}. Продолжение на паузе.`); };
+  const replaceSession = (input: unknown) => { const restored = Session.restore(content, input); if (restored.view().profile !== "engineering") throw new Error("Это сохранение игровой спальни; откройте главную страницу"); restored.pause(); session = restored; element<HTMLInputElement>("#seed").value = session.seed; lastFrame = performance.now(); notice(`Снимок загружен: тик ${session.tick}. Продолжение на паузе.`); };
   element("#load").addEventListener("click", () => void operate(async () => replaceSession(await loadCheckpoint())));
   element("#export").addEventListener("click", () => {
     syncClock(); const data = JSON.stringify(session.snapshot(), null, 2); const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
