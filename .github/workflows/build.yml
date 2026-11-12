@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -36,10 +36,25 @@ jobs:
         run: |
           mkdir -p ci-artifacts
           tar -czf ci-artifacts/dependencies-linux-x64.tar.gz node_modules
+          split -b 16M -d --additional-suffix=.part ci-artifacts/dependencies-linux-x64.tar.gz ci-artifacts/deps-
       - uses: actions/upload-artifact@v4
         with:
-          name: bunker-dependencies-linux-x64
-          path: ci-artifacts/dependencies-linux-x64.tar.gz
+          name: bunker-deps-00
+          path: ci-artifacts/deps-00.part
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('ci-artifacts/deps-01.part') != '' }}
+        with:
+          name: bunker-deps-01
+          path: ci-artifacts/deps-01.part
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('ci-artifacts/deps-02.part') != '' }}
+        with:
+          name: bunker-deps-02
+          path: ci-artifacts/deps-02.part
           compression-level: 0
           retention-days: 7
       - name: Dependency-free engineering checks
