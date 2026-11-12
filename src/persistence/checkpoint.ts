@@ -10,23 +10,23 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveCheckpoint(snapshot: Snapshot): Promise<void> {
+export async function saveCheckpoint(snapshot: Snapshot, key = "latest"): Promise<void> {
   const database = await openDatabase();
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction("checkpoints", "readwrite");
-      transaction.objectStore("checkpoints").put(snapshot, "latest");
+      transaction.objectStore("checkpoints").put(snapshot, key);
       transaction.oncomplete = () => resolve();
       transaction.onerror = transaction.onabort = () => reject(new Error("Снимок не сохранён"));
     });
   } finally { database.close(); }
 }
 
-export async function loadCheckpoint(): Promise<unknown> {
+export async function loadCheckpoint(key = "latest"): Promise<unknown> {
   const database = await openDatabase();
   try {
     return await new Promise<unknown>((resolve, reject) => {
-      const request = database.transaction("checkpoints", "readonly").objectStore("checkpoints").get("latest");
+      const request = database.transaction("checkpoints", "readonly").objectStore("checkpoints").get(key);
       request.onsuccess = () => request.result ? resolve(request.result) : reject(new Error("Локального снимка пока нет"));
       request.onerror = () => reject(new Error("Снимок не прочитан"));
     });

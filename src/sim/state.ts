@@ -29,6 +29,12 @@ export const actionSchema = z.strictObject({
   reservations: z.array(z.strictObject({ itemId: text, location: itemLocationSchema })),
 });
 export const commandSchema = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("walk-to"), x: value, y: value }),
+  z.strictObject({ type: z.literal("move-input"), dx: value.int().min(-1).max(1), dy: value.int().min(-1).max(1) }),
+  z.strictObject({ type: z.literal("search-container"), containerId: text }),
+  z.strictObject({ type: z.literal("transfer-item"), itemId: text, to: z.enum(["backpack","hands","floor"]) }),
+  z.strictObject({ type: z.literal("wear-item"), itemId: text }),
+  z.strictObject({ type: z.literal("remove-clothing"), slot: slotSchema, to: z.enum(["backpack","floor"]) }),
   z.strictObject({ type: z.literal("door-mode"), doorId: text, mode: doorModeSchema }),
   z.strictObject({ type: z.literal("inspect-sensor"), sensorId: text }),
   z.strictObject({ type: z.literal("room-valve"), roomId: text, circuit: z.enum(["heating", "drain"]), open: z.boolean() }),
@@ -42,7 +48,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("pump-condition"), pumpId: text, wearPercent: percent, infectionPercent: percent }),
 ]);
 export const loggedCommandSchema = z.strictObject({
-  tick, sequence: tick.positive(), scope: z.literal("developer"), command: commandSchema,
+  tick, frame: tick, sequence: tick.positive(), scope: z.enum(["developer","player"]), command: commandSchema,
 });
 const pcg = z.strictObject({ state: z.string().regex(/^[0-9a-f]{16}$/), increment: z.string().regex(/^[0-9a-f]{16}$/).refine((s) => Boolean(BigInt(`0x${s}`) & 1n), "Чётный increment PCG32") });
 const edge = z.strictObject({ id: text, from: text, to: text, open: z.boolean() });
@@ -51,6 +57,13 @@ const episode = z.strictObject({ untilTick: tick, value: value.nullable() }).nul
 export const worldSchema = z.strictObject({
   schemaVersion: z.literal(SCHEMA_VERSION), balanceVersion: z.literal("1.1"), contentFingerprint: z.string().regex(/^[a-f0-9]{16}$/),
   seed: text.max(200), tick, status: z.literal("active"), nextEntitySequence: tick.positive(),
+  profile: z.enum(["engineering","bedroom"]),
+  bedroom: z.strictObject({
+    frame: tick, path: z.array(z.strictObject({x:value,y:value})), dx:value, dy:value, facingX:value, facingY:value,
+    action:z.strictObject({kind:z.enum(["search","wear","remove"]),targetId:text,endFrame:tick,startFrame:tick,slot:slotSchema.nullable(),backpackSlot:tick.max(9).nullable(),toFloor:z.boolean()}).nullable(),
+    containers:record(z.strictObject({id:text,searched:z.boolean(),capacity:tick.positive()})),
+    traits:record(z.strictObject({warmth:value.nonnegative(),chemical:value.nonnegative(),maxDurability:value.nonnegative().nullable(),materialId:text.nullable()})),
+  }).nullable(),
   rng: z.strictObject({ world: pcg, loot: pcg, fungus: pcg, rats: pcg, equipment: pcg }),
   rooms: record(z.strictObject({ id: text, temperatureC: value, waterM3: value.nonnegative(), heatingValveOpen: z.boolean(), drainValveOpen: z.boolean(), heatingRequest: z.boolean(), floodIsolation: z.boolean(), temperatureIsolation: z.boolean() })),
   doors: record(z.strictObject({ id: text, mode: doorModeSchema, position, automaticCommand: position })),

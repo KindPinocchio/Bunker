@@ -1,4 +1,5 @@
 import type { Content } from "../content/load";
+import { initializeBedroom, validateBedroom } from "./bedroom.ts";
 import { canonicalStringify } from "./canonical.ts";
 import { createRngStreams, Pcg32 } from "./pcg32.ts";
 import { SCHEMA_VERSION, CLOTHING_SLOTS } from "./constants.ts";
@@ -15,7 +16,7 @@ export function buildGraphs(world: Pick<WorldState, "doors" | "relays">, content
   };
 }
 
-export function createWorld(content: Content, seedInput: string): WorldState {
+export function createWorld(content: Content, seedInput: string, profile: WorldState["profile"] = "engineering"): WorldState {
   const seed = seedInput.trim();
   if (!seed || seed.length > 200) throw new Error("Seed должен содержать от 1 до 200 символов");
   const rng = createRngStreams(seed);
@@ -55,7 +56,7 @@ export function createWorld(content: Content, seedInput: string): WorldState {
   rng.world = random.snapshot();
   const exit = content.layout.accessible_exit;
   const world: WorldState = {
-    schemaVersion: SCHEMA_VERSION, balanceVersion: content.balance.version, contentFingerprint: content.fingerprint, seed, tick: 0, status: "active", nextEntitySequence: 1, rng,
+    profile, bedroom: null, schemaVersion: SCHEMA_VERSION, balanceVersion: content.balance.version, contentFingerprint: content.fingerprint, seed, tick: 0, status: "active", nextEntitySequence: 1, rng,
     rooms: Object.fromEntries(content.rooms.map((room) => [room.id, { id: room.id, temperatureC: initial.temperature_c, waterM3: initial.water_cm / 100 * room.area, heatingValveOpen: room.id !== "u_control", drainValveOpen: true, heatingRequest: false, floodIsolation: false, temperatureIsolation: false }])),
     doors: Object.fromEntries(content.doors.map((door) => [door.id, { id: door.id, mode: door.initialMode, position: door.initialPosition, automaticCommand: "open" }])),
     items, sensors, relays, pipes, pumps,
@@ -65,6 +66,7 @@ export function createWorld(content: Content, seedInput: string): WorldState {
     player: { roomId: exit.room, x: exit.x + 0.75, y: exit.y, backpack: Array.from({ length: 10 }, () => null), hands: null, clothing, hazards: { cold: 0, heat: 0, poison: 0, oxygen: 0 }, action: null },
     observations: {}, graphs: { navigation: [], rats: [], hydraulic: [], stairs: [], thermal: [], power: [], infection: [] }, lastTickPhases: [],
   };
+  if (profile === "bedroom") initializeBedroom(world, content);
   world.graphs = buildGraphs(world, content);
   return world;
 }
@@ -102,16 +104,21 @@ export function validateWorld(world: WorldState, content: Content): void {
   world.player.backpack.forEach((itemId, slot) => reference(itemId, `backpack:${slot}`));
   reference(world.player.hands, "hands");
   for (const [slot, itemId] of Object.entries(world.player.clothing)) reference(itemId, `worn:${slot}`);
+  for (const item of Object.values(world.items)) if (item.location.kind === "container") {
+    assert(world.bedroom?.containers[item.location.containerId], `Неизвестный контейнер ${item.id}`);
+    reference(item.id, `container:${item.location.containerId}`);
+  }
   for (const item of Object.values(world.items)) {
     assert(catalog[item.typeId], `Неизвестный тип ${item.typeId}`);
     const owners = references.get(item.id) ?? [];
     const location = item.location;
-    const owner = location.kind === "installed" ? `installed:${location.socketId}` : location.kind === "backpack" ? `backpack:${location.slot}` : location.kind === "worn" ? `worn:${location.slot}` : location.kind;
+    const owner = location.kind === "installed" ? `installed:${location.socketId}` : location.kind === "backpack" ? `backpack:${location.slot}` : location.kind === "worn" ? `worn:${location.slot}` : location.kind === "container" ? `container:${location.containerId}` : location.kind;
     if (["floor", "destroyed"].includes(location.kind)) assert(owners.length === 0, `Лишнее владение ${item.id}`);
     else assert(owners.length === 1 && owners[0] === owner, `Нарушено владение ${item.id}`);
     if (location.kind === "floor") assert(world.rooms[location.roomId], `Пол неизвестной комнаты ${item.id}`);
     if (location.kind === "worn") assert(catalog[item.typeId]!.equipment_slot === location.slot && (item.durability ?? 0) > 0, `Неверная экипировка ${item.id}`);
   }
+  validateBedroom(world, content);
   assert(world.rooms[world.player.roomId], "Игрок в неизвестной комнате");
   const room = content.rooms.find((r) => r.id === world.player.roomId)!;
   assert(world.player.x >= room.x && world.player.x <= room.x + room.width && world.player.y >= room.y && world.player.y <= room.y + room.depth, "Игрок вне комнаты");

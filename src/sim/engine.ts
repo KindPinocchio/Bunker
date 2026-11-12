@@ -53,7 +53,7 @@ export function applyDeveloperCommand(world: WorldState, command: Command, conte
     const pump = next.pumps[command.pumpId];
     if (!pump) throw new Error("Неизвестный насос");
     pump.wearPercent = command.wearPercent; pump.infectionPercent = command.infectionPercent;
-  }
+  } else throw new Error("Команда предназначена для игровой сцены");
   refreshPower(next, content);
   next.graphs = buildGraphs(next, content);
   return next;

@@ -1,4 +1,5 @@
 import type { Content } from "../content/load";
+import { advanceBedroomFrame, applyPlayerCommand, finishBedroomAction, MOTION_HZ } from "../sim/bedroom";
 import { applyDeveloperCommand, stepWorld } from "../sim/engine";
 import { commandSchema, snapshotSchema, SCHEMA_VERSION, type ClockState, type Command, type LoggedCommand, type Snapshot, type WorldState } from "../sim/state";
 import { createWorld, validateWorld } from "../sim/world";
@@ -8,7 +9,7 @@ export class Session {
   private timing: ClockState = { paused: true, remainderMs: 0 };
   private log: LoggedCommand[] = [];
 
-  constructor(readonly content: Content, seed: string) { this.state = createWorld(content, seed); }
+  constructor(readonly content: Content, seed: string, profile: WorldState["profile"] = "engineering") { this.state = createWorld(content, seed, profile); }
   get tick(): number { return this.state.tick; }
   get paused(): boolean { return this.timing.paused; }
   get seed(): string { return this.state.seed; }
@@ -21,17 +22,22 @@ export class Session {
     if (!Number.isFinite(elapsedMs) || elapsedMs < 0) throw new Error("Неверный интервал часов");
     if (this.paused) return;
     this.timing.remainderMs += elapsedMs;
-    while (this.timing.remainderMs >= 1000) {
-      this.state = stepWorld(this.state, this.content);
-      this.timing.remainderMs -= 1000;
+    const quantum = this.state.profile === "bedroom" ? 1000 / MOTION_HZ : 1000;
+    while (this.timing.remainderMs + 1e-7 >= quantum) {
+      if (this.state.bedroom) {
+        advanceBedroomFrame(this.state, this.content);
+        if (this.state.bedroom.frame % MOTION_HZ === 0) this.state = stepWorld(this.state, this.content);
+        finishBedroomAction(this.state);
+      } else this.state = stepWorld(this.state, this.content);
+      this.timing.remainderMs = Math.max(0, this.timing.remainderMs - quantum);
     }
   }
 
   dispatch(command: Command): void {
     if (this.paused) throw new Error("На паузе изменение мира запрещено");
     const checked = commandSchema.parse(command);
-    const next = applyDeveloperCommand(this.state, checked, this.content);
-    this.log.push({ tick: this.state.tick, sequence: this.log.length + 1, scope: "developer", command: structuredClone(checked) });
+    const next = this.state.profile === "bedroom" ? applyPlayerCommand(this.state, checked, this.content) : applyDeveloperCommand(this.state, checked, this.content);
+    this.log.push({ tick: this.state.tick, frame: this.state.bedroom?.frame ?? this.state.tick * MOTION_HZ, sequence: this.log.length + 1, scope: this.state.profile === "bedroom" ? "player" : "developer", command: structuredClone(checked) });
     this.state = next;
   }
 
@@ -45,9 +51,10 @@ export class Session {
       const snapshot = snapshotSchema.parse(input);
       validateWorld(snapshot.world, content);
       for (const [index, entry] of snapshot.commands.entries()) {
-        if (entry.sequence !== index + 1 || entry.tick > snapshot.world.tick || (index > 0 && entry.tick < snapshot.commands[index - 1]!.tick)) throw new Error("Нарушен порядок журнала команд");
+        if (entry.sequence !== index + 1 || entry.tick > snapshot.world.tick || entry.frame > (snapshot.world.bedroom?.frame ?? snapshot.world.tick * MOTION_HZ) || Math.floor(entry.frame / MOTION_HZ) !== entry.tick || entry.scope !== (snapshot.world.profile === "bedroom" ? "player" : "developer") || (index > 0 && entry.frame < snapshot.commands[index - 1]!.frame) || (index > 0 && entry.tick < snapshot.commands[index - 1]!.tick)) throw new Error("Нарушен порядок журнала команд");
       }
-      const result = new Session(content, snapshot.world.seed);
+      if (snapshot.world.bedroom && snapshot.clock.remainderMs >= 1000 / MOTION_HZ) throw new Error("Неверный остаток кадровых часов");
+      const result = new Session(content, snapshot.world.seed, snapshot.world.profile);
       result.state = snapshot.world;
       result.timing = snapshot.clock;
       result.log = snapshot.commands;
@@ -58,13 +65,15 @@ export class Session {
   }
 }
 
-export function replay(content: Content, seed: string, commands: LoggedCommand[], untilTick: number): Session {
-  if (!Number.isSafeInteger(untilTick) || untilTick < 0 || commands.some((c, i) => c.tick > untilTick || c.sequence !== i + 1 || (i > 0 && c.tick < commands[i - 1]!.tick))) throw new Error("Некорректный журнал воспроизведения");
-  const session = new Session(content, seed); session.resume();
+export function replay(content: Content, seed: string, commands: LoggedCommand[], untilTick: number, profile: WorldState["profile"] = "engineering", untilFrame = untilTick * MOTION_HZ): Session {
+  if (!Number.isSafeInteger(untilTick) || untilTick < 0 || !Number.isSafeInteger(untilFrame) || Math.floor(untilFrame / MOTION_HZ) !== untilTick || commands.some((c, i) => c.frame > untilFrame || Math.floor(c.frame / MOTION_HZ) !== c.tick || c.sequence !== i + 1 || c.scope !== (profile === "bedroom" ? "player" : "developer") || (i > 0 && c.frame < commands[i - 1]!.frame))) throw new Error("Некорректный журнал воспроизведения");
+  const session = new Session(content, seed, profile); session.resume();
   let index = 0;
-  for (let tick = 0; tick <= untilTick; tick++) {
-    while (commands[index]?.tick === tick) session.dispatch(commands[index++]!.command);
-    if (tick < untilTick) session.advance(1000);
+  const end = profile === "bedroom" ? untilFrame : untilTick;
+  for (let step = 0; step <= end; step++) {
+    const frame = profile === "bedroom" ? step : step * MOTION_HZ;
+    while (commands[index]?.frame === frame) session.dispatch(commands[index++]!.command);
+    if (step < end) session.advance(profile === "bedroom" ? 1000 / MOTION_HZ : 1000);
   }
   return session;
 }

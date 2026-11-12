@@ -6,6 +6,7 @@ import catalogSource from "../../docs/spec/bunker_loot_catalog_v1.json";
 import dressingSource from "../../docs/spec/bunker_room_dressing_v1.json";
 import { canonicalStringify, compareIds, fingerprint } from "../sim/canonical";
 import { RNG_STREAMS } from "../sim/pcg32";
+import { BEDROOM_CONTENT } from "./bedroom";
 
 const id = z.string().min(1).regex(/^[a-zA-Z0-9_:.-]+$/);
 const number = z.number().finite();
@@ -16,6 +17,7 @@ const point = z.object({ room: id, x: number, y: number });
 const pair = z.tuple([id, id]);
 const balanceSchema = z.looseObject({
   version: z.literal("1.1"),
+  player: z.looseObject({ walk_m_s: positive, interaction_m: positive }),
   simulation: z.object({ tick_s: z.literal(1), rng: z.literal("PCG32"), streams: z.tuple(RNG_STREAMS.map((s) => z.literal(s)) as [z.ZodLiteral<"world">, z.ZodLiteral<"loot">, z.ZodLiteral<"fungus">, z.ZodLiteral<"rats">, z.ZodLiteral<"equipment">]), numeric_epsilon: positive }),
   initial: z.looseObject({ temperature_c: number, water_cm: number.nonnegative(), battery_charge_fraction: number.min(0).max(1), doors: z.literal("open"), door_mode: z.literal("auto"), valves: z.literal("open"), pumps: z.literal("in_service"), pump_wear_range: range, installed_damage_range: range, loose_part_damage_range: range, relay_count: z.literal(35) }),
   fungus: z.looseObject({ growth_max_pp_s: positive, temperature_response: z.object({ kind: z.literal("triangular"), min_c: number, optimum_c: number, max_c: number }).refine((r) => r.min_c < r.optimum_c && r.optimum_c < r.max_c, "Неверные границы F(T)") }),
@@ -24,7 +26,7 @@ const balanceSchema = z.looseObject({
   engineering: z.object({ reference_area_m2: positive, reference_volume_m3: positive, cooling_fraction_s: number.min(0).max(1), max_temperature_c: number, floor_delta_m: positive, stair_flow_m3_s: positive, drain_nominal_m3_s_each: positive, pipe_max_leak_m3_s: positive, pipe_temperature_gain_reference_c_s: positive, heating_on_c: number, heating_off_c: number, flood_close_cm: number.nonnegative(), flood_release_cm: z.literal(0), pipe_count_per_heated_room: z.literal(1) }),
   fault_signals: z.object({ bridge_probability_coefficient: number.min(0).max(1), episode_duration_s: z.tuple([positive.int(), positive.int()]), false_temperature_choices_c: z.array(number).min(1), false_water_choices_cm: z.array(number.nonnegative()).min(1), false_charge_choices_percent: z.array(percent).min(1) }),
   actions_s: z.record(z.string(), number.nonnegative().int()),
-  clothing: z.looseObject({ durability: z.looseObject({ ordinary: positive }) }),
+  clothing: z.looseObject({ movement_damage_per_m: number.nonnegative(), heavy_carry_extra_per_m: number.nonnegative(), movement_shares: z.record(z.string(),number.nonnegative()), warmth_caps: z.record(z.string(),number.nonnegative()), durability: z.looseObject({ ordinary: positive, insulated: positive }) }),
   loot: z.looseObject({ loose_item_count: z.literal(72), category_counts: z.record(z.string(), number.nonnegative().int()), containers_per_room: z.record(id, number.nonnegative().int()), base_prices_by_catalog_number: z.record(z.string(), number.nonnegative()), rarity_probabilities: z.array(number.min(0).max(1)).length(3) }),
 });
 const roomSchema = z.object({ id, floor: z.enum(["upper", "lower"]), name: z.string(), x: number, y: number, width: positive, depth: positive, area: positive, volume: positive });
@@ -144,7 +146,7 @@ export function loadContent(input: unknown = RAW_CONTENT) {
     requireCondition(Math.abs(balance.loot.rarity_probabilities.reduce((a, b) => a + b, 0) - 1) <= balance.simulation.numeric_epsilon, "Вероятности редкости не дают 1");
     sameIds(Object.keys(balance.loot.containers_per_room), roomIds, "места обыска");
     sameIds(dressing.rooms.map((r) => r.room_id), roomIds, "обстановка");
-    return { balance, rooms, doors, relays, sensors, pipes, items, dressing: dressing.rooms, layout, fingerprint: fingerprint(canonicalStringify(data)), sourceVersions: { balance: balance.version, layout: "1.0", engineering: engineering.version, catalog: "1.0", dressing: "1.0" } };
+    return { balance, rooms, doors, relays, sensors, pipes, items, dressing: dressing.rooms, layout, fingerprint: fingerprint(canonicalStringify({ data, bedroom: BEDROOM_CONTENT })), sourceVersions: { balance: balance.version, layout: "1.0", engineering: engineering.version, catalog: "1.0", dressing: "1.0", bedroom: "1.0" } };
   } catch (error) {
     throw new Error(`Ошибка данных комплекса: ${error instanceof Error ? error.message : String(error)}`);
   }
