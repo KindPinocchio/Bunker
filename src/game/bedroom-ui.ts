@@ -3,7 +3,7 @@ import { loadContent } from "../content/load";
 import { BEDROOM_OBJECTS, MATERIALS } from "../content/bedroom";
 import { Session } from "./session";
 import { BedroomScene } from "../render/bedroom-scene";
-import { inReach, itemAccessible } from "../sim/bedroom";
+import { clothingProtection, inReach, itemAccessible } from "../sim/bedroom";
 import type { Command, ItemState, WorldState } from "../sim/state";
 import { loadCheckpoint, saveCheckpoint } from "../persistence/checkpoint";
 const root = document.querySelector<HTMLDivElement>("#app")!;
@@ -35,7 +35,7 @@ function execute(command: Command) { try {
 catch (error) {
     message(error instanceof Error ? error.message : String(error), true);
 } }
-function choose(id: string) { selected = id; el<HTMLSelectElement>("object-picker").value = id; scene.select(id); windowKey = ""; render(); }
+function choose(id: string) { if (root.dataset.ready !== "true") return; selected = id; el<HTMLSelectElement>("object-picker").value = id; scene.select(id); windowKey = ""; render(); }
 function button(text: string, action: () => void, disabled = false) { const b = document.createElement("button"); b.textContent = text; b.disabled = disabled; b.onclick = action; return b; }
 function accessibleSource(w: WorldState): string | null { const o = BEDROOM_OBJECTS.find(o => o.id === selected); return o && w.bedroom!.containers[o.id]?.searched && inReach(w, o.ax, o.ay, content) ? o.id : null; }
 function openWindow(id: string) { el(id).hidden = false; windowKey = ""; render(); }
@@ -83,7 +83,7 @@ function itemCard(item: ItemState, w: WorldState, where: "source" | "bag" | "han
     card.append(actions);
     return card;
 }
-function warmth(item: ItemState, w: WorldState) { const t = w.bedroom!.traits[item.id]; return (t?.warmth ?? 0) * (item.durability !== null && t?.maxDurability ? item.durability / t.maxDurability : 1); }
+function warmth(item: ItemState, w: WorldState) { return clothingProtection(item,w).warmth; }
 function renderWindows(w: WorldState) {
     const source = accessibleSource(w);
     const sourceItems = Object.values(w.items).filter(i => i.location.kind === "container" ? i.location.containerId === source : i.location.kind === "floor" && itemAccessible(w, i, content));
@@ -95,14 +95,15 @@ function renderWindows(w: WorldState) {
     el("bag-items").replaceChildren(...w.player.backpack.map((id, index) => { if (id)
         return itemCard(w.items[id]!, w, "bag"); const e = document.createElement("div"); e.className = "empty-slot"; e.textContent = String(index + 1).padStart(2, "0") + " · Пусто"; return e; }));
     el("hands-item").replaceChildren(...(w.player.hands ? [itemCard(w.items[w.player.hands]!, w, "hands")] : [document.createTextNode("Руки свободны")]));
-    let heat = 0;
+    let heat = 0, chemical = 0;
     el("clothing-items").replaceChildren(...Object.entries(w.player.clothing).map(([slot, id]) => { const wrap = document.createElement("section"); const h = document.createElement("h3"); h.textContent = slotNames[slot as keyof typeof slotNames]; wrap.append(h); if (id) {
         heat += warmth(w.items[id]!, w);
+        chemical += clothingProtection(w.items[id]!,w).chemical;
         wrap.append(itemCard(w.items[id]!, w, "worn"));
     }
     else
         wrap.append("Не надето"); return wrap; }));
-    el("protection").textContent = `Теплоизоляция: ${heat.toFixed(0)} / 100 · Химическая защита: 0 / 100`;
+    el("protection").textContent = `Теплоизоляция: ${heat.toFixed(0)} / 100 · Химическая защита: ${chemical.toFixed(0)} / 100`;
 }
 function renderContext(w: WorldState) {
     const panel = el("context");
@@ -281,7 +282,7 @@ for (const b of root.querySelectorAll<HTMLButtonElement>("[data-dir]")) {
     b.onpointerup = b.onpointercancel = () => { if (keys.delete(b.dataset.dir!) && !session.paused && !session.view().bedroom!.action)
         direction(); };
 }
-async function boot() { for (const b of root.querySelectorAll<HTMLButtonElement>("button"))
-    b.disabled = true; await scene.init(el("scene"), (x, y) => execute({ type: "walk-to", x, y }), choose); root.dataset.ready = "true"; for (const b of root.querySelectorAll<HTMLButtonElement>("button"))
+async function boot() { for (const b of root.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>("button,input,select"))
+    b.disabled = true; await scene.init(el("scene"), (x, y) => execute({ type: "walk-to", x, y }), choose); root.dataset.ready = "true"; for (const b of root.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>("button,input,select"))
     b.disabled = false; message("Комната готова. Продолжите время и осмотрите тумбочку."); render(); let previous: number | null = null; function frame(now: number) { session.advance(previous === null ? 0 : Math.max(0, now - previous)); previous = now; render(); requestAnimationFrame(frame); } requestAnimationFrame(frame); }
 void boot().catch(e => message(`Не удалось открыть сцену: ${String(e)}`, true));

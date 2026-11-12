@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { loadContent } from "../../src/content/load";
 import { Session, replay } from "../../src/game/session";
-import { walkable } from "../../src/sim/bedroom";
+import { clothingProtection, walkable } from "../../src/sim/bedroom";
 import { validateWorld } from "../../src/sim/world";
 const content = loadContent();
 function game() { const s = new Session(content, "bedroom-tests", "bedroom"); s.resume(); return s; }
@@ -136,4 +136,23 @@ test.each(["slot", "duration", "container", "clock", "profile"])("corrupt %s in 
     if (fault === "profile")
         snap.world.profile = "engineering";
     expect(() => Session.restore(content, snap)).toThrow("Снимок не загружен");
+});
+
+
+test("protection stays absolute at every positive durability, independently of damage", () => {
+    const w=game().view(),item=Object.values(w.items).find(i=>i.id.startsWith("bedroom:")&&i.typeId==="jacket")!;
+    item.damagePercent=30;item.durability=1;
+    expect(clothingProtection(item,w)).toEqual({warmth:35,chemical:0});
+    item.durability=0;
+    expect(clothingProtection(item,w)).toEqual({warmth:0,chemical:0});
+});
+
+test("heavy carrying adds movement wear only to gloves, without slowing the player", () => {
+    const snap=game().snapshot(),id="test:heavy-pipe";
+    snap.world.items[id]={id,typeId:"heating_pipe",location:{kind:"hands"},infectionPercent:0,damagePercent:0,protectionUntilTick:0,durability:null};
+    snap.world.player.hands=id;
+    const s=Session.restore(content,snap);s.dispatch({type:"move-input",dx:0,dy:1});s.advance(1000);
+    const w=s.view();expect(w.player.y).toBeCloseTo(4,8);
+    expect(w.items["starter:boots"]!.durability).toBeCloseTo(100-1.5*.015*.6,8);
+    expect(w.items["starter:gloves"]!.durability).toBeCloseTo(100-1.5*(.015*.1+.02),8);
 });

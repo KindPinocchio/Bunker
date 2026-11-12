@@ -71,7 +71,7 @@ export function initializeBedroom(world: WorldState, content: Content): void {
         const jacket = typeId === "jacket";
         const max = jacket ? content.balance.clothing.durability.insulated : null;
         if (max)
-            item.durability = max * (0.65 + random.nextFloat() * 0.35);
+            item.durability = max * (0.5 + random.nextFloat() * 0.5);
         b.traits[id] = { warmth: jacket ? content.balance.clothing.warmth_caps.jacket! : 0, chemical: 0, maxDurability: max, materialId };
         world.items[id] = item;
     };
@@ -247,12 +247,12 @@ export function advanceBedroomFrame(world: WorldState, content: Content): WorldS
     }
     const distance = Math.hypot(world.player.x - oldX, world.player.y - oldY);
     const heavy = world.player.hands && content.items.find(i => i.id === world.items[world.player.hands!]!.typeId)!.carry === "hands";
-    const damage = distance * (content.balance.clothing.movement_damage_per_m + (heavy ? content.balance.clothing.heavy_carry_extra_per_m : 0));
+    const damage = distance * content.balance.clothing.movement_damage_per_m;
     for (const [slot, id] of Object.entries(world.player.clothing))
         if (id) {
             const item = world.items[id]!;
             if (item.durability !== null) {
-                item.durability = Math.max(0, item.durability - damage * (content.balance.clothing.movement_shares[slot] ?? 0));
+                item.durability = Math.max(0, item.durability - damage * (content.balance.clothing.movement_shares[slot] ?? 0) - (heavy && slot === "gloves" ? distance * content.balance.clothing.heavy_carry_extra_per_m : 0));
                 if (item.durability === 0) {
                     release(world, item);
                     item.location = { kind: "destroyed" };
@@ -350,4 +350,10 @@ export function validateBedroom(world: WorldState, content: Content): void {
     for (const [id, t] of Object.entries(b.traits))
         if (!world.items[id] || (t.materialId && !MATERIALS[t.materialId]))
             throw new Error("Неизвестные свойства/материал");
+}
+
+/** A.2: positive durability preserves the full absolute protection of this item. */
+export function clothingProtection(item: ItemState, world: WorldState): { warmth: number; chemical: number } {
+    const traits = world.bedroom?.traits[item.id];
+    return (item.durability ?? 0) > 0 ? { warmth: traits?.warmth ?? 0, chemical: traits?.chemical ?? 0 } : { warmth: 0, chemical: 0 };
 }
