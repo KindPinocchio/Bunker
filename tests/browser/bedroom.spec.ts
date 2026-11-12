@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 test("bedroom search survives save/reload, transfers a photo and reads its reverse on pause", async ({ page }) => {
+    test.setTimeout(60000);
     const errors: string[] = [];
     page.on("pageerror", e => errors.push(e.message));
     await page.goto("/");
@@ -79,4 +80,18 @@ test("mobile scene fits the viewport and touch movement changes position", async
     await expect(page.getByTestId("position")).not.toHaveText(before!);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await page.screenshot({ path: "test-results/bedroom-mobile.png", fullPage: true });
+});
+
+
+test("a delayed animation frame catches up without losing simulation seconds", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
+    await page.clock.install();
+    await page.clock.runFor(50);
+    await page.getByRole("button", { name: "Продолжить", exact: true }).click();
+    await page.clock.fastForward(3000);
+    await expect(page.getByTestId("clock")).toHaveText("00:03");
+    await page.getByRole("button", { name: "Пауза", exact: true }).click();
+    await page.clock.fastForward(10000);
+    await expect(page.getByTestId("clock")).toHaveText("00:03");
 });

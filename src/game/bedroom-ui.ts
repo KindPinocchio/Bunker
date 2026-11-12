@@ -283,5 +283,5 @@ for (const b of root.querySelectorAll<HTMLButtonElement>("[data-dir]")) {
 }
 async function boot() { for (const b of root.querySelectorAll<HTMLButtonElement>("button"))
     b.disabled = true; await scene.init(el("scene"), (x, y) => execute({ type: "walk-to", x, y }), choose); root.dataset.ready = "true"; for (const b of root.querySelectorAll<HTMLButtonElement>("button"))
-    b.disabled = false; message("Комната готова. Продолжите время и осмотрите тумбочку."); render(); let previous: number | null = null; function frame(now: number) { session.advance(previous === null ? 0 : Math.max(0, Math.min(now - previous, 250))); previous = now; render(); requestAnimationFrame(frame); } requestAnimationFrame(frame); }
+    b.disabled = false; message("Комната готова. Продолжите время и осмотрите тумбочку."); render(); let previous: number | null = null; function frame(now: number) { session.advance(previous === null ? 0 : Math.max(0, now - previous)); previous = now; render(); requestAnimationFrame(frame); } requestAnimationFrame(frame); }
 void boot().catch(e => message(`Не удалось открыть сцену: ${String(e)}`, true));
