@@ -147,9 +147,10 @@ export class BedroomScene {
     this.player = new Sprite(this.characterTextures[0]!);
     this.player.label = "player"; this.playerShadow.label = "player-shadow";
     this.player.anchor.set(person.pivot[0] / person.width, person.pivot[1] / person.height); this.player.scale.set(person.scale);
-    this.playerShadow.ellipse(0,2,18,8).fill({color:0x10110c,alpha:0.06});
-    this.playerShadow.ellipse(0,2,14,6).fill({color:0x10110c,alpha:0.12});
-    this.playerShadow.ellipse(0,2,9,4).fill({color:0x10110c,alpha:0.18});
+    const groundRatio=CAMERA.floorY/CAMERA.x;
+    this.playerShadow.ellipse(0,2,18,18*groundRatio*.9).fill({color:0x10110c,alpha:0.06});
+    this.playerShadow.ellipse(0,2,14,14*groundRatio*.9).fill({color:0x10110c,alpha:0.12});
+    this.playerShadow.ellipse(0,2,9,9*groundRatio*.9).fill({color:0x10110c,alpha:0.18});
     this.actors.addChild(this.playerShadow,this.player);
     this.app.stage.eventMode = "static";
     this.app.stage.on("pointertap", e => {
@@ -232,7 +233,7 @@ export class BedroomScene {
     if (this.selected && this.markers.visible) {
       const o = BEDROOM_OBJECTS.find(o => o.id === this.selected) ?? {ax:opening.x,ay:opening.y+(world.player.roomId==="u_bed1"?.5:-.5)}, m = this.project(o.ax, o.ay);
       footprints.push({id:"approach-marker",x:o.ax,y:o.ay,width:0,depth:0,priority:0});
-      this.markers.ellipse(m.x, m.y, 14, 7).stroke({ color: 0xc7b776, width: 1, alpha: .8 });
+      this.markers.ellipse(m.x, m.y, 14, 14*CAMERA.floorY/CAMERA.x).stroke({ color: 0xc7b776, width: 1, alpha: .8 });
     }
     for (const [id,sprite] of this.props){
       sprite.visible=observableObject(world,this.content,id);

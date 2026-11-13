@@ -10,6 +10,11 @@ test("higher camera keeps the wardrobe aligned, floor picking correct and mobile
     expect((roof[b!]![1]!-roof[a!]![1]!)/(roof[b!]![0]!-roof[a!]![0]!)).toBeCloseTo(sign!*CAMERA.floorY/CAMERA.x,5);
   }
   await page.screenshot({path:"test-results/camera-high-bedroom.png",fullPage:true});
+  const initial=(await canvas.boundingBox())!;
+  const initialTransform=await canvas.evaluate(c=>({x:Number(c.dataset.originX),y:Number(c.dataset.originY),scale:Number(c.dataset.sceneScale)}));
+  const roofCentre=roof.reduce((sum,p)=>[sum[0]!+p[0]!/4,sum[1]!+p[1]!/4],[0,0]);
+  await page.mouse.click(initial.x+initialTransform.x+roofCentre[0]!*initialTransform.scale,initial.y+initialTransform.y+roofCentre[1]!*initialTransform.scale);
+  await expect(page.locator("#context")).toContainText("Платяной шкаф");
   await page.getByRole("button",{name:"Продолжить",exact:true}).click();
   const box=(await canvas.boundingBox())!,target=project(4,5.55);
   const transform=await canvas.evaluate(c=>({x:Number(c.dataset.originX),y:Number(c.dataset.originY),scale:Number(c.dataset.sceneScale)}));
