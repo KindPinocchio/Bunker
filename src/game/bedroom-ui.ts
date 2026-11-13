@@ -172,7 +172,7 @@ function render() {
     const corridor=w.player.roomId==="u_corridor";
     el("room-name").textContent=corridor?"ВЕРХНИЙ ЭТАЖ / КОРИДОР 01":"ВЕРХНИЙ ЭТАЖ / СПАЛЬНЯ 01";
     el("room-title").textContent=corridor?"За порогом":"После смены";
-    el("room-intro").textContent=corridor?"Длинный проход тянется вдоль жилого блока. За открытым проёмом остаётся спальня.":"Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.";
+    el("room-intro").textContent=corridor?`Длинный проход тянется вдоль жилого блока. За ${w.doors[sceneDoor(content).id]!.position==="open"?"открытым проёмом":"закрытой дверью"} остаётся спальня.`:"Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.";
     el("flashlight").textContent=b.flashlight?"Фонарь · вкл  F":"Фонарь · выкл  F";
     el("flashlight").setAttribute("aria-pressed",String(b.flashlight));
     el<HTMLButtonElement>("flashlight").disabled=session.paused||!!b.action;

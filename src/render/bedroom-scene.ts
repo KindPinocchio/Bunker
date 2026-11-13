@@ -2,7 +2,7 @@ import { Application, Assets, Container, Graphics, Matrix, Polygon, Rectangle, S
 import { BEDROOM_OBJECTS } from "../content/bedroom";
 import type { Content } from "../content/load";
 import { EXPLORATION_LAYOUT } from "../content/bedroom";
-import { observableObject, observablePoint, roomLight, sceneDoor, visibilityPolygon, type Point } from "../sim/exploration";
+import { flashlightReaches, observableObject, observablePoint, roomLight, sceneDoor, visibilityPolygon, type Point } from "../sim/exploration";
 import type { WorldState } from "../sim/state";
 import { characterFrame, WORKER_ART } from "./character-frame";
 import { orderGroundFootprints, playerDepthFootprint, type DepthFootprint } from "./depth-order";
@@ -32,6 +32,7 @@ export class BedroomScene {
   private door = new Container();
   private doorLeaf!: Sprite;
   private poster!: Sprite;
+  private plaque!: Text;
   private content!: Content;
   private cameraRoom = "u_bed1";
   private cameraPoint = {x:4,y:4};
@@ -73,14 +74,15 @@ export class BedroomScene {
     };
     // Split the bedroom back wall at the real opening instead of painting a door on a solid wall.
     const opening=sceneDoor(content),half=EXPLORATION_LAYOUT.portalWidthM/2;
-    wall("u_bed1",2,2,4,"y");
-    wall("u_bed1",2,2,opening.x-half-2,"x");
-    wall("u_bed1",opening.x+half,2,6-opening.x-half,"x");
-    for(let x=0;x<20;x++)wall("u_corridor",x,0,1,"x");
-    wall("u_corridor",0,0,2,"y");
+    const bedroom=content.rooms.find(r=>r.id==="u_bed1")!,corridor=content.rooms.find(r=>r.id==="u_corridor")!;
+    wall(bedroom.id,bedroom.x,bedroom.y,bedroom.depth,"y");
+    wall(bedroom.id,bedroom.x,bedroom.y,opening.x-half-bedroom.x,"x");
+    wall(bedroom.id,opening.x+half,bedroom.y,bedroom.x+bedroom.width-opening.x-half,"x");
+    for(let x=corridor.x;x<corridor.x+corridor.width;x++)wall(corridor.id,x,corridor.y,Math.min(1,corridor.x+corridor.width-x),"x");
+    wall(corridor.id,corridor.x,corridor.y,corridor.depth,"y");
     this.room.addChild(this.bedroomDecor);
     const plaque=new Text({text:"СПАЛЬНЯ 01",style:{fontFamily:"monospace",fontSize:10,fill:0xb3b39b,letterSpacing:2}});
-    plaque.position.set(105,-34);plaque.skew.y=.45;this.bedroomDecor.addChild(plaque);
+    this.plaque=plaque;plaque.position.set(105,-34);plaque.skew.y=.45;this.bedroomDecor.addChild(plaque);
     this.poster=new Sprite(await Assets.load("/assets/bedroom/poster.svg"));
     this.poster.width=53;this.poster.height=73;this.poster.tint=0xbcb69b;
     const pp=this.project(2,3.1);this.poster.position.set(pp.x-35,pp.y-132);this.poster.skew.y=-.5;
@@ -136,7 +138,8 @@ export class BedroomScene {
     const w = this.host.clientWidth, h = this.host.clientHeight;
     this.scale = Math.min((w - 24) / 700, (h - 40) / 570);
     const focus=this.project(this.cameraPoint.x,this.cameraPoint.y);
-    const follow=this.cameraRoom==="u_bed1"?0:Math.max(0,Math.min(1,(2-this.cameraPoint.y)/.8));
+    const portal=sceneDoor(this.content);
+    const follow=this.cameraRoom==="u_bed1"?0:Math.max(0,Math.min(1,Math.max((portal.y-this.cameraPoint.y)/.8,(Math.abs(this.cameraPoint.x-portal.x)-.3)/1.5)));
     const bedroomOrigin={x:w/2,y:(h-130*this.scale)/2};
     this.origin={x:bedroomOrigin.x-focus.x*this.scale*follow,y:bedroomOrigin.y+(h*.67-focus.y*this.scale-bedroomOrigin.y)*follow};
     this.room.position.set(this.origin.x, this.origin.y); this.room.scale.set(this.scale); this.app.stage.hitArea = this.app.screen;
@@ -167,16 +170,20 @@ export class BedroomScene {
     }
     for(const wall of this.walls){
       wall.sprite.visible=wall.roomId===world.player.roomId&&observablePoint(world,this.content,wall.point);
-      wall.sprite.tint=tint(wall.roomId==="u_bed1"?0xa5aa91:0x8d9984,Math.max(roomLight(world,this.content,wall.roomId),b.flashlight?.85:0));
+      wall.sprite.tint=tint(wall.roomId==="u_bed1"?0xa5aa91:0x8d9984,Math.max(roomLight(world,this.content,wall.roomId),flashlightReaches(world,this.content,wall.point)?.85:0));
     }
-    this.bedroomDecor.visible=world.player.roomId==="u_bed1"&&roomLight(world,this.content,"u_bed1")>0;
-    this.bedroomDecor.alpha=roomLight(world,this.content,"u_bed1");
+    this.bedroomDecor.visible=world.player.roomId==="u_bed1";
+    this.plaque.visible=observablePoint(world,this.content,{x:4.4,y:2});
+    this.plaque.alpha=Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:4.4,y:2})?.9:0);
     this.poster.visible=observableObject(world,this.content,"poster");
+    this.poster.tint=tint(0xbcb69b,Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:3.3,y:3.1})?.9:0));
     const opening=sceneDoor(this.content),closed=world.doors[opening.id]!.position==="closed";
     this.door.visible=observablePoint(world,this.content,opening);
     this.doorLeaf.visible=closed;
     this.door.alpha=closed&&world.player.roomId==="u_corridor"?.5:1;
+    this.door.tint=tint(0xffffff,Math.max(roomLight(world,this.content,world.player.roomId),flashlightReaches(world,this.content,opening)?.9:0));
     this.player.visible=roomLight(world,this.content,world.player.roomId)>0||b.flashlight;
+    this.player.tint=tint(0xffffff,Math.max(roomLight(world,this.content,world.player.roomId),b.flashlight?.9:0));
     this.playerShadow.visible=this.player.visible;
     if (this.previousMotionFrame !== b.frame) {
       this.moved = this.previousPosition !== null && Math.hypot(world.player.x - this.previousPosition.x, world.player.y - this.previousPosition.y) > 1e-7;
@@ -199,7 +206,8 @@ export class BedroomScene {
     }
     for (const [id,sprite] of this.props){
       sprite.visible=observableObject(world,this.content,id);
-      sprite.tint=tint(id===this.selected?0xffedc5:0xffffff,Math.max(roomLight(world,this.content,"u_bed1"),b.flashlight?1:0));
+      const object=BEDROOM_OBJECTS.find(o=>o.id===id)!;
+      sprite.tint=tint(id===this.selected?0xffedc5:0xffffff,Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:object.ax,y:object.ay})?.9:0));
     }
     for (const [index,id] of orderGroundFootprints(footprints).entries()) {
       const layer=index*4;
