@@ -1,10 +1,11 @@
 import type { Content } from "../content/load.ts";
 import { BEDROOM_OBJECTS, MATERIALS } from "../content/bedroom.ts";
 import type { Command, ItemState, WorldState } from "./state.ts";
+import { PLAYER_RADIUS_M } from "./constants.ts";
 import { Pcg32 } from "./pcg32.ts";
 export const MOTION_HZ = 60;
 export function walkable(x: number, y: number): boolean {
-    const r = 0.16;
+    const r = PLAYER_RADIUS_M;
     return x >= 2 + r && x <= 6 - r && y >= 2 + r && y <= 6 - r && !BEDROOM_OBJECTS.some(o => o.width > 0 && x > o.x - r && x < o.x + o.width + r && y > o.y - r && y < o.y + o.depth + r);
 }
 export function pathTo(x: number, y: number, tx: number, ty: number): {

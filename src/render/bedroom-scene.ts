@@ -2,6 +2,7 @@ import { Application, Assets, Container, Graphics, Matrix, Polygon, Rectangle, S
 import { BEDROOM_OBJECTS } from "../content/bedroom";
 import type { WorldState } from "../sim/state";
 import { characterFrame, WORKER_ART } from "./character-frame";
+import { orderGroundFootprints, playerDepthFootprint, type DepthFootprint } from "./depth-order";
 import { BEDROOM_ART } from "./bedroom-art";
 
 /** Raster assets use authored ground pivots; simulation geometry remains in metres. */
@@ -16,6 +17,7 @@ export class BedroomScene {
   private previousPosition: {x:number;y:number}|null = null;
   private moved = false;
   private props = new Map<string, Sprite>();
+  private readonly depthProps: DepthFootprint[] = BEDROOM_OBJECTS.filter(o=>o.kind!=="poster").map(o=>({id:o.id,x:o.x,y:o.y,width:o.width,depth:o.depth}));
   private markers = new Graphics();
   private host!: HTMLElement;
   private scale = 1;
@@ -66,15 +68,16 @@ export class BedroomScene {
     poster.on("pointertap", e => { e.stopPropagation(); onObject("poster"); });
     this.room.addChild(poster);
     this.actors.sortableChildren = true;
+    this.markers.label = "approach-marker";
     this.room.addChild(this.actors);
     this.actors.addChild(this.markers);
     for (const o of BEDROOM_OBJECTS) {
       if (o.kind === "poster") continue;
       const art = BEDROOM_ART[o.kind], sprite = new Sprite(frame(art.column, art.row));
+      sprite.label = o.id;
       const factor = (o.width + o.depth) * 80 / art.footprintWidth;
       sprite.anchor.set(art.pivot[0] / 512, art.pivot[1] / 512); sprite.scale.set(factor);
       const p = this.project(o.x, o.y); sprite.position.set(p.x, p.y);
-      sprite.zIndex = p.y + (o.kind === "wardrobe" ? o.depth + o.width / 2 : o.width + o.depth) * 40;
       sprite.hitArea = new Polygon(art.hit.map((v, i) => v - art.pivot[i % 2]!));
       sprite.eventMode = "static"; sprite.cursor = "pointer";
       sprite.on("pointertap", e => { e.stopPropagation(); onObject(o.id); });
@@ -85,6 +88,7 @@ export class BedroomScene {
     if (worker.width !== person.width * person.columns || worker.height !== person.height * person.rows) throw new Error("Неверный размер атласа персонажа");
     this.characterTextures = Array.from({length:person.rows * person.columns},(_,i)=>new Texture({source:worker.source,frame:new Rectangle(i % person.columns * person.width,Math.floor(i / person.columns) * person.height,person.width,person.height)}));
     this.player = new Sprite(this.characterTextures[0]!);
+    this.player.label = "player"; this.playerShadow.label = "player-shadow";
     this.player.anchor.set(person.pivot[0] / person.width, person.pivot[1] / person.height); this.player.scale.set(person.scale);
     this.playerShadow.ellipse(0,2,18,8).fill({color:0x10110c,alpha:0.06});
     this.playerShadow.ellipse(0,2,14,6).fill({color:0x10110c,alpha:0.12});
@@ -115,18 +119,29 @@ export class BedroomScene {
     const moving = this.moved && !b.action && (b.path.length > 0 || b.dx !== 0 || b.dy !== 0);
     const pose = characterFrame(b.facingX,b.facingY,moving,b.frame);
     this.player.texture = this.characterTextures[pose.index]!;
-    this.player.position.set(p.x, p.y); this.player.zIndex = p.y + 3;
-    this.playerShadow.position.set(p.x,p.y); this.playerShadow.zIndex = p.y + 1;
+    this.player.position.set(p.x, p.y);
+    this.playerShadow.position.set(p.x,p.y);
     this.app.canvas.dataset.facing = pose.facing;
     this.app.canvas.dataset.pose = pose.pose;
     this.app.canvas.dataset.characterFrame = String(pose.index);
-    this.markers.clear();
+    const footprints: DepthFootprint[] = [...this.depthProps,playerDepthFootprint(world.player.x,world.player.y)];
+    this.markers.clear(); this.markers.visible = this.selected !== null;
     if (this.selected) {
       const o = BEDROOM_OBJECTS.find(o => o.id === this.selected)!, m = this.project(o.ax, o.ay);
-      this.markers.zIndex = m.y;
+      footprints.push({id:"approach-marker",x:o.ax,y:o.ay,width:0,depth:0,priority:0});
       this.markers.ellipse(m.x, m.y, 14, 7).stroke({ color: 0xc7b776, width: 1, alpha: .8 });
     }
     for (const [id, sprite] of this.props) sprite.tint = id === this.selected ? 0xffedc5 : 0xffffff;
+    for (const [index,id] of orderGroundFootprints(footprints).entries()) {
+      const layer=index*4;
+      if(id==="player"){this.playerShadow.zIndex=layer;this.player.zIndex=layer+1;}
+      else if(id==="approach-marker")this.markers.zIndex=layer;
+      else this.props.get(id)!.zIndex=layer;
+    }
+    this.actors.sortChildren();
+    this.app.canvas.dataset.playerX = String(world.player.x);
+    this.app.canvas.dataset.playerY = String(world.player.y);
+    this.app.canvas.dataset.depthOrder = this.actors.children.filter(child=>child.visible).map(child=>child.label).join(",");
     this.room.alpha = world.power.source === "none" ? .22 : world.power.source === "battery" ? .65 : 1;
   }
 }
