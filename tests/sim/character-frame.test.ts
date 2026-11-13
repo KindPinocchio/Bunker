@@ -14,7 +14,7 @@ test("walking uses alternating strides and a passing pose; idle uses its own fra
   expect(characterFrame(1,0,true,15)).toEqual(characterFrame(1,0,true,15));
 });
 test("all 32 frames fit the real PNG and select a unique row/pose",()=>{
-  const png=readFileSync(new URL("../../public/assets/bedroom/raster/worker-directions-v1.png",import.meta.url));
+  const png=readFileSync(new URL("../../public/assets/bedroom/raster/worker-high-v1.png",import.meta.url));
   expect(png.readUInt32BE(16)).toBe(WORKER_ART.width*WORKER_ART.columns);
   expect(png.readUInt32BE(20)).toBe(WORKER_ART.height*WORKER_ART.rows);
   const indices=new Set<number>();

@@ -6,7 +6,7 @@ test("bedroom search survives save/reload, transfers a photo and reads its rever
     await page.goto("/");
     await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
     await expect(page.locator("#scene canvas")).toBeVisible();
-    await expect(page.locator("#scene canvas")).toHaveAttribute("data-art", "raster-1.1");
+    await expect(page.locator("#scene canvas")).toHaveAttribute("data-art", "raster-1.2");
     await page.screenshot({ path: "test-results/bedroom.png", fullPage: true });
     await page.getByRole("button", { name: "Продолжить", exact: true }).click();
     await page.keyboard.press("e");
@@ -134,7 +134,7 @@ test("standalone bedroom loads inline art and a readable photograph",async({page
   await page.setViewportSize({width:390,height:844});
   await page.goto("/standalone-preview.html");
   await expect(page.locator("#app")).toHaveAttribute("data-ready","true");
-  await expect(page.locator("#scene canvas")).toHaveAttribute("data-art","raster-1.1");
+  await expect(page.locator("#scene canvas")).toHaveAttribute("data-art","raster-1.2");
   await page.screenshot({path:"test-results/standalone-mobile.png",fullPage:true});
   await page.getByRole("button",{name:"Продолжить",exact:true}).click();
   await page.keyboard.press("e");

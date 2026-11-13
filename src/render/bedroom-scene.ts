@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Matrix, Polygon, Rectangle, Sprite, Text, Texture } from "pixi.js";
+import { Application, Assets, Container, Graphics, Matrix, Mesh, MeshGeometry, Polygon, Rectangle, Sprite, Text, Texture } from "pixi.js";
 import { BEDROOM_OBJECTS } from "../content/bedroom";
 import type { Content } from "../content/load";
 import { EXPLORATION_LAYOUT } from "../content/bedroom";
@@ -6,6 +6,8 @@ import { flashlightReaches, observableObject, observablePoint, roomLight, sceneD
 import type { WorldState } from "../sim/state";
 import { characterFrame, WORKER_ART } from "./character-frame";
 import { orderGroundFootprints, playerDepthFootprint, type DepthFootprint } from "./depth-order";
+import { CAMERA, project, unproject } from "./projection";
+import { boxPropGeometry } from "./prop-geometry";
 import { BEDROOM_ART } from "./bedroom-art";
 
 /** Raster assets use authored ground pivots; simulation geometry remains in metres. */
@@ -19,7 +21,7 @@ export class BedroomScene {
   private previousMotionFrame = -1;
   private previousPosition: {x:number;y:number}|null = null;
   private moved = false;
-  private props = new Map<string, Sprite>();
+  private props = new Map<string, Container>();
   private readonly depthProps: DepthFootprint[] = BEDROOM_OBJECTS.filter(o=>o.kind!=="poster").map(o=>({id:o.id,x:o.x,y:o.y,width:o.width,depth:o.depth}));
   private markers = new Graphics();
   private floors = new Container();
@@ -40,33 +42,36 @@ export class BedroomScene {
   private scale = 1;
   private origin = { x: 0, y: 0 };
   private selected: string | null = null;
-  private project(x: number, y: number) { return { x: (x - y) * 80, y: (x + y - 4) * 40 }; }
+  private project = project;
 
   async init(host: HTMLElement, content: Content, onFloor: (x: number, y: number) => void, onObject: (id: string) => void) {
     this.host = host; this.content = content;
     await this.app.init({ resizeTo: host, background: 0x000000, antialias: true, resolution: Math.min(devicePixelRatio, 2), autoDensity: true });
     host.appendChild(this.app.canvas);
     this.app.canvas.setAttribute("aria-label", "Жилой блок: нажмите на пол для перемещения, на мебель для осмотра");
-    this.app.canvas.dataset.art = "raster-1.1";
+    this.app.canvas.dataset.art = "raster-1.2";
+    this.app.canvas.dataset.cameraElevation=String(CAMERA.elevationDeg);
     this.app.stage.addChild(this.room);
     const atlas: Texture = await Assets.load(BEDROOM_ART.atlas);
     if (atlas.width !== 1536 || atlas.height !== 1024) throw new Error("Неверный размер атласа спальни");
-    const frame = (column: number, row: number) => new Texture({ source: atlas.source, frame: new Rectangle(column * 512, row * 512, 512, 512) });
+    const materialAtlas:Texture=await Assets.load(BEDROOM_ART.materialAtlas);
+    const frame = (column: number, row: number,source=atlas) => new Texture({ source: source.source, frame: new Rectangle(column * 512, row * 512, 512, 512) });
     this.room.addChild(this.floors,this.torchFloors,this.floorMask,this.torchMask);
     this.floors.mask=this.floorMask; this.torchFloors.mask=this.torchMask;
-    const floorTexture=frame(BEDROOM_ART.floor.column,BEDROOM_ART.floor.row);
-    const wallTexture=frame(BEDROOM_ART.wall.column,BEDROOM_ART.wall.row);
+    const floorTexture=frame(BEDROOM_ART.floor.column,BEDROOM_ART.floor.row,materialAtlas);
+    const wallTexture=frame(BEDROOM_ART.wall.column,BEDROOM_ART.wall.row,materialAtlas);
     for(const r of content.rooms.filter(r=>EXPLORATION_LAYOUT.rooms.some(id=>id===r.id))){
       for(let x=r.x;x<r.x+r.width;x+=4)for(let y=r.y;y<r.y+r.depth;y+=4){
         const width=Math.min(4,r.x+r.width-x),depth=Math.min(4,r.y+r.depth-y),p=this.project(x,y);
         for(const torch of [false,true]){
           const sprite=new Sprite(floorTexture);
-          sprite.setFromMatrix(new Matrix(width*80/512,width*40/512,-depth*80/512,depth*40/512,p.x,p.y));
+          sprite.setFromMatrix(new Matrix(width*CAMERA.x/512,width*CAMERA.floorY/512,-depth*CAMERA.x/512,depth*CAMERA.floorY/512,p.x,p.y));
           (torch?this.torchFloors:this.floors).addChild(sprite);
           this.floorSprites.push({sprite,roomId:r.id,torch});
         }
       }
     }
+    const wallHeight=CAMERA.cutawayWallM*CAMERA.vertical;
     const wall=(roomId:string,x:number,y:number,width:number,axis:"x"|"y")=>{
       // Crop a continuous material into narrow light samples instead of lighting an entire wall at once.
       let offset=0;
@@ -75,7 +80,7 @@ export class BedroomScene {
         const span=Math.min(.25,width-offset,4-textureOffset),pixelWidth=span*128;
         const texture=new Texture({source:wallTexture.source,frame:new Rectangle(wallTexture.frame.x+textureOffset*128,wallTexture.frame.y,pixelWidth,512)});
         const sprite=new Sprite(texture),sx=x+(axis==="x"?offset:0),sy=y+(axis==="y"?offset:0),p=this.project(sx,sy);
-        sprite.setFromMatrix(new Matrix((axis==="x"?1:-1)*span*80/pixelWidth,span*40/pixelWidth,0,190/512,p.x,p.y-190));
+        sprite.setFromMatrix(new Matrix((axis==="x"?1:-1)*span*CAMERA.x/pixelWidth,span*CAMERA.floorY/pixelWidth,0,wallHeight/512,p.x,p.y-wallHeight));
         this.room.addChild(sprite);this.walls.push({sprite,roomId,point:{x:sx+(axis==="x"?span/2:0),y:sy+(axis==="y"?span/2:0)}});
         offset+=span;
       }
@@ -91,10 +96,11 @@ export class BedroomScene {
     this.room.addChild(this.bedroomDecor);
     const plaque=new Text({text:"СПАЛЬНЯ 01",style:{fontFamily:"monospace",fontSize:8,fill:0xb3b39b,letterSpacing:.8}});
     const sign=this.project(2.6,2);
-    this.plaque=plaque;plaque.position.set(sign.x,sign.y-96);plaque.skew.y=.5;this.bedroomDecor.addChild(plaque);
+    this.plaque=plaque;plaque.position.set(sign.x,sign.y-1.05*CAMERA.vertical);plaque.skew.y=Math.atan2(CAMERA.floorY,CAMERA.x);this.bedroomDecor.addChild(plaque);
     this.poster=new Sprite(await Assets.load("/assets/bedroom/poster.svg"));
     this.poster.width=53;this.poster.height=73;this.poster.tint=0xbcb69b;
-    const pp=this.project(2,3.1);this.poster.position.set(pp.x-35,pp.y-132);this.poster.skew.y=-.5;
+    const pp=this.project(2,3.1);this.poster.position.set(pp.x-35,pp.y-1.5*CAMERA.vertical);this.poster.skew.y=-Math.atan2(CAMERA.floorY,CAMERA.x);
+    this.poster.height=73*CAMERA.vertical/(190/1.9);
     this.poster.eventMode="static";this.poster.cursor="pointer";
     this.poster.on("pointertap",e=>{e.stopPropagation();onObject("poster");});
     this.bedroomDecor.addChild(this.poster);
@@ -102,26 +108,37 @@ export class BedroomScene {
     this.room.addChild(this.actors);this.actors.addChild(this.markers);
     const door=this.project(opening.x,opening.y);
     this.door.label="bedroom-door";this.door.position.set(door.x,door.y);
+    const doorHeight=1.65*CAMERA.vertical;
     this.doorLeaf=new Sprite(wallTexture);
-    this.doorLeaf.setFromMatrix(new Matrix(half*160/512,half*80/512,0,142/512,-half*80,-142-half*40));
+    this.doorLeaf.setFromMatrix(new Matrix(half*CAMERA.x*2/512,half*CAMERA.floorY*2/512,0,doorHeight/512,-half*CAMERA.x,-doorHeight-half*CAMERA.floorY));
     this.doorLeaf.tint=0x657364;this.door.addChild(this.doorLeaf);
     const frameGraphic=new Graphics();
-    frameGraphic.poly([-half*80,-half*40,-half*80,-146-half*40,half*80,-146+half*40,half*80,half*40]).stroke({color:0x7d806b,width:5});
-    frameGraphic.moveTo(-half*80,-half*40).lineTo(half*80,half*40).stroke({color:0xa89b73,width:3});
+    frameGraphic.poly([-half*CAMERA.x,-half*CAMERA.floorY,-half*CAMERA.x,-doorHeight-half*CAMERA.floorY,half*CAMERA.x,-doorHeight+half*CAMERA.floorY,half*CAMERA.x,half*CAMERA.floorY]).stroke({color:0x7d806b,width:5});
+    frameGraphic.moveTo(-half*CAMERA.x,-half*CAMERA.floorY).lineTo(half*CAMERA.x,half*CAMERA.floorY).stroke({color:0xa89b73,width:3});
     this.door.addChild(frameGraphic);
-    this.door.hitArea=new Polygon([-half*80,-half*40,-half*80,-146-half*40,half*80,-146+half*40,half*80,half*40]);
+    this.door.hitArea=new Polygon([-half*CAMERA.x,-half*CAMERA.floorY,-half*CAMERA.x,-doorHeight-half*CAMERA.floorY,half*CAMERA.x,-doorHeight+half*CAMERA.floorY,half*CAMERA.x,half*CAMERA.floorY]);
     this.door.eventMode="static";this.door.cursor="pointer";
     this.door.on("pointertap",e=>{e.stopPropagation();onObject(opening.id);});this.actors.addChild(this.door);
     for(const o of BEDROOM_OBJECTS){
       if(o.kind==="poster")continue;
-      const art=BEDROOM_ART[o.kind],sprite=new Sprite(frame(art.column,art.row));sprite.label=o.id;
-      const factor=(o.width+o.depth)*80/art.footprintWidth;
-      sprite.anchor.set(art.pivot[0]/512,art.pivot[1]/512);sprite.scale.set(factor);
-      const p=this.project(o.x,o.y);sprite.position.set(p.x,p.y);
-      sprite.hitArea=new Polygon(art.hit.map((v,i)=>v-art.pivot[i%2]!));
-      sprite.eventMode="static";sprite.cursor="pointer";
-      sprite.on("pointertap",e=>{e.stopPropagation();onObject(o.id);});
-      this.actors.addChild(sprite);this.props.set(o.id,sprite);
+      const p=this.project(o.x,o.y);
+      let prop:Container;
+      if(o.kind==="bed"){
+        const art=BEDROOM_ART.bed,sprite=new Sprite(frame(art.column,art.row));
+        const a=(o.width+o.depth)*CAMERA.x/art.footprintWidth;
+        const sx=art.groundX[1]!/art.groundX[0]!,sy=art.groundY[1]!/art.groundY[0]!;
+        const d=2*a*CAMERA.floorY/CAMERA.x/(sx-sy),b=a*CAMERA.floorY/CAMERA.x-d*sx;
+        sprite.setFromMatrix(new Matrix(a,b,0,d,p.x-a*art.pivot[0]!,p.y-b*art.pivot[0]!-d*art.pivot[1]!));
+        sprite.hitArea=new Polygon([...art.hit]);prop=sprite;
+      }else{
+        const data=boxPropGeometry(o.kind,o.width,o.depth);
+        const mesh=new Mesh({texture:atlas,geometry:new MeshGeometry({positions:data.positions,uvs:data.uvs,indices:data.indices})});
+        mesh.position.set(p.x,p.y);prop=mesh;
+        if(o.kind==="wardrobe")this.app.canvas.dataset.wardrobeRoof=JSON.stringify(Array.from({length:4},(_,i)=>[mesh.geometry.positions[16+i*2]!+p.x,mesh.geometry.positions[17+i*2]!+p.y]));
+      }
+      prop.label=o.id;prop.eventMode="static";prop.cursor="pointer";
+      prop.on("pointertap",e=>{e.stopPropagation();onObject(o.id);});
+      this.actors.addChild(prop);this.props.set(o.id,prop);
     }
     const person = WORKER_ART;
     const worker: Texture = await Assets.load(person.atlas);
@@ -137,7 +154,7 @@ export class BedroomScene {
     this.app.stage.eventMode = "static";
     this.app.stage.on("pointertap", e => {
       const x = (e.global.x - this.origin.x) / this.scale, y = (e.global.y - this.origin.y) / this.scale;
-      onFloor(2 + y / 80 + x / 160, 2 + y / 80 - x / 160);
+      const target=unproject(x,y);onFloor(target.x,target.y);
     });
     new ResizeObserver(() => this.resize()).observe(host); this.resize();
     this.app.renderer.on("resize", () => this.resize());
@@ -145,13 +162,17 @@ export class BedroomScene {
 
   private resize() {
     const w = this.host.clientWidth, h = this.host.clientHeight;
-    this.scale = Math.min((w - 24) / 700, (h - 40) / 570);
+    const bedroom=this.content.rooms.find(r=>r.id==="u_bed1")!;
+    const wallHeight=CAMERA.cutawayWallM*CAMERA.vertical;
+    const floorHeight=(bedroom.width+bedroom.depth)*CAMERA.floorY;
+    this.scale = Math.min((w - 24) / 700, (h - 40) / (floorHeight+wallHeight+24));
     const focus=this.project(this.cameraPoint.x,this.cameraPoint.y);
     const portal=sceneDoor(this.content);
     const follow=this.cameraRoom==="u_bed1"?0:Math.max(0,Math.min(1,Math.max((portal.y-this.cameraPoint.y)/.8,(Math.abs(this.cameraPoint.x-portal.x)-.3)/1.5)));
-    const bedroomOrigin={x:w/2,y:(h-130*this.scale)/2};
+    const bedroomOrigin={x:w/2,y:h/2-(floorHeight-wallHeight)*this.scale/2};
     this.origin={x:bedroomOrigin.x-focus.x*this.scale*follow,y:bedroomOrigin.y+(h*.67-focus.y*this.scale-bedroomOrigin.y)*follow};
     this.room.position.set(this.origin.x, this.origin.y); this.room.scale.set(this.scale); this.app.stage.hitArea = this.app.screen;
+    this.app.canvas.dataset.originX=String(this.origin.x);this.app.canvas.dataset.originY=String(this.origin.y);this.app.canvas.dataset.sceneScale=String(this.scale);
   }
   select(id: string | null) { this.selected = id; }
   render(world: WorldState) {
