@@ -12,7 +12,7 @@
 
 В 0.4.1 камера поднята с 30° до **52,5°**. Мебель и персонаж получили спрайты для высокого ракурса; плоскости шкафа и тумбочек выровнены с осями комнаты. Подробности — в [отчёте камеры](docs/verification-camera-2026-11-13.md).
 
-Локально прошли **86 проверок Vitest** и сборка. Пакет Chromium включает **13 сценариев**, включая углы крышки шкафа, нажатие на мебель и точность нажатия на пол; результаты CI фиксируются в отчёте камеры. Рабочая ветка — [codex/bunker-engineering-ci](https://github.com/KindPinocchio/Bunker/tree/codex/bunker-engineering-ci).
+Локально прошли **86 проверок Vitest** и сборка. В [GitHub Actions 0.4.1](https://github.com/KindPinocchio/Bunker/actions/runs/43498494683) прошли **86 Vitest**, **41 проверка без зависимостей**, сборка и **13 сценариев Chromium**, включая углы крышки шкафа, нажатие на мебель и точность нажатия на пол. Рабочая ветка — [codex/bunker-engineering-ci](https://github.com/KindPinocchio/Bunker/tree/codex/bunker-engineering-ci).
 
 
 ## Запуск без установки пакетов
