@@ -5,7 +5,8 @@ import { applyDeveloperCommand } from "../../src/sim/engine";
 
 test.use({video:{mode:"on",size:{width:1280,height:900}}});
 test("door blocks the player and hides the bedroom, round trip survives reload",async({page})=>{
-  test.setTimeout(45000);
+  // Includes real-time walks, a reload and several full-page captures of the raster scene.
+  test.setTimeout(75000);
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto("/");await expect(page.locator("#app")).toHaveAttribute("data-ready","true");
   const canvas=page.locator("#scene canvas"),controls=page.locator("#door-controls");
