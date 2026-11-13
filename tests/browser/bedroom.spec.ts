@@ -6,6 +6,7 @@ test("bedroom search survives save/reload, transfers a photo and reads its rever
     await page.goto("/");
     await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
     await expect(page.locator("#scene canvas")).toBeVisible();
+    await expect(page.locator("#scene canvas")).toHaveAttribute("data-art", "raster-1.1");
     await page.screenshot({ path: "test-results/bedroom.png", fullPage: true });
     await page.getByRole("button", { name: "Продолжить", exact: true }).click();
     await page.keyboard.press("e");
@@ -94,4 +95,54 @@ test("a delayed animation frame catches up without losing simulation seconds", a
     await page.getByRole("button", { name: "Пауза", exact: true }).click();
     await page.clock.fastForward(10000);
     await expect(page.getByTestId("clock")).toHaveText("00:03");
+});
+
+test("character turns through eight directions, walks, and freezes on pause", async ({page})=>{
+  await page.goto("/");
+  await expect(page.locator("#app")).toHaveAttribute("data-ready","true");
+  await page.clock.install();
+  await page.getByRole("button",{name:"Продолжить",exact:true}).click();
+  await page.clock.pauseAt(new Date(Date.now()+1000));
+  const canvas=page.locator("#scene canvas");
+  await page.keyboard.down("s");await page.keyboard.down("a");
+  await page.clock.runFor(1000);
+  await page.keyboard.up("s");await page.keyboard.up("a");
+  for(const [keys,facing]of [ [["d"],"e"], [["s","d"],"se"], [["s"],"s"], [["s","a"],"sw"], [["a"],"w"], [["a","w"],"nw"], [["w"],"n"], [["w","d"],"ne"] ] as const){
+    for(const key of keys)await page.keyboard.down(key);
+    await page.clock.runFor(120);
+    await expect(canvas).toHaveAttribute("data-facing",facing);
+    await expect(canvas).toHaveAttribute("data-pose","walk");
+    for(const key of keys)await page.keyboard.up(key);
+    await expect(canvas).toHaveAttribute("data-pose","idle");
+  }
+  await page.keyboard.down("a");
+  await page.clock.runFor(150);
+  await page.keyboard.press("Space");
+  await page.keyboard.up("a");
+  const frame=await canvas.getAttribute("data-character-frame"),clock=await page.getByTestId("clock").textContent();
+  await page.clock.runFor(1500);
+  await expect(canvas).toHaveAttribute("data-character-frame",frame!);
+  await expect(page.getByTestId("clock")).toHaveText(clock!);
+  await page.screenshot({path:"test-results/character-facing.png",fullPage:true});
+});
+
+test("standalone bedroom loads inline art and a readable photograph",async({page})=>{
+  test.setTimeout(45000);
+  const errors:string[]=[],externalAssets:string[]=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  page.on("request",r=>{if(r.url().startsWith("http")&&!r.url().endsWith("/standalone-preview.html"))externalAssets.push(r.url());});
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/standalone-preview.html");
+  await expect(page.locator("#app")).toHaveAttribute("data-ready","true");
+  await expect(page.locator("#scene canvas")).toHaveAttribute("data-art","raster-1.1");
+  await page.screenshot({path:"test-results/standalone-mobile.png",fullPage:true});
+  await page.getByRole("button",{name:"Продолжить",exact:true}).click();
+  await page.keyboard.press("e");
+  await page.getByRole("button",{name:"Обыскать · 5 с"}).click();
+  await page.getByRole("button",{name:"Открыть вещи",exact:true}).click({timeout:10000});
+  await page.locator("#source-items article").filter({hasText:"Подписанная личная фотография"}).getByRole("button",{name:"Читать",exact:true}).click();
+  await expect(page.locator("#reader img")).toBeVisible();
+  await expect.poll(()=>page.locator("#reader img").evaluate((i:HTMLImageElement)=>i.naturalWidth)).toBeGreaterThan(500);
+  expect(await page.locator("#reader img").getAttribute("src")).toMatch(/^data:image\/png;base64,/);
+  expect(externalAssets).toEqual([]);expect(errors).toEqual([]);
 });

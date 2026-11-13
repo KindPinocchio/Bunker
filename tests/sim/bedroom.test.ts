@@ -1,12 +1,13 @@
 import { expect, test } from "vitest";
+import { BEDROOM_OBJECTS } from "../../src/content/bedroom";
 import { loadContent } from "../../src/content/load";
 import { Session, replay } from "../../src/game/session";
-import { clothingProtection, walkable } from "../../src/sim/bedroom";
+import { clothingProtection, inReach, pathTo, walkable } from "../../src/sim/bedroom";
 import { validateWorld } from "../../src/sim/world";
 const content = loadContent();
 function game() { const s = new Session(content, "bedroom-tests", "bedroom"); s.resume(); return s; }
 function left(s: Session) { s.dispatch({ type: "walk-to", x: 3.25, y: 2.85 }); s.advance(2000); }
-function wardrobe(s: Session) { s.dispatch({ type: "walk-to", x: 3.5, y: 5.45 }); s.advance(5000); s.dispatch({ type: "search-container", containerId: "wardrobe" }); s.advance(10000); }
+function wardrobe(s: Session) { s.dispatch({ type: "walk-to", x: 5.45, y: 3.1 }); s.advance(5000); s.dispatch({ type: "search-container", containerId: "wardrobe" }); s.advance(10000); }
 const loot = (s: Session, type: string) => Object.values(s.view().items).find(i => i.typeId === type && i.id.startsWith("bedroom:"))!.id;
 test("bedroom contents exist before search, are seeded, and reject remote/hidden transfers", () => {
     const s = game(), photo = loot(s, "personal_photo");
@@ -155,4 +156,19 @@ test("heavy carrying adds movement wear only to gloves, without slowing the play
     const w=s.view();expect(w.player.y).toBeCloseTo(4,8);
     expect(w.items["starter:boots"]!.durability).toBeCloseTo(100-1.5*.015*.6,8);
     expect(w.items["starter:gloves"]!.durability).toBeCloseTo(100-1.5*(.015*.1+.02),8);
+});
+
+
+test("rearranged furniture has a free approach; the wardrobe front faces the room", () => {
+    const w=game().view();
+    for (const o of BEDROOM_OBJECTS) {
+        expect(walkable(o.ax,o.ay),o.id).toBe(true);
+        expect(pathTo(w.player.x,w.player.y,o.ax,o.ay).length,o.id).toBeGreaterThan(0);
+        const near=structuredClone(w);near.player.x=o.ax;near.player.y=o.ay;
+        expect(inReach(near,o.ax,o.ay,content),o.id).toBe(true);
+    }
+    const wardrobe=BEDROOM_OBJECTS.find(o=>o.id==="wardrobe")!;
+    expect(wardrobe.ay).toBeGreaterThan(wardrobe.y+wardrobe.depth+.32);
+    expect(wardrobe.ax).toBeGreaterThan(wardrobe.x);
+    expect(wardrobe.ax).toBeLessThan(wardrobe.x+wardrobe.width);
 });

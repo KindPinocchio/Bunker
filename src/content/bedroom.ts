@@ -1,9 +1,10 @@
 export const BEDROOM_OBJECTS = [
-    { id: "bed-left", kind: "bed", name: "Кровать у стены", x: 2.12, y: 3.35, width: 1.05, depth: 2.3, ax: 3.4, ay: 4.3 },
-    { id: "bed-right", kind: "bed", name: "Вторая кровать", x: 4.8, y: 3.35, width: 1.05, depth: 2.3, ax: 4.5, ay: 4.3 },
-    { id: "nightstand-left", kind: "nightstand", name: "Тумбочка Соколовой", x: 2.15, y: 2.45, width: 0.85, depth: 0.65, ax: 3.25, ay: 2.85 },
-    { id: "nightstand-right", kind: "nightstand", name: "Тумбочка Лебедева", x: 5.05, y: 2.45, width: 0.75, depth: 0.65, ax: 4.75, ay: 2.85 },
-    { id: "wardrobe", kind: "wardrobe", name: "Платяной шкаф", x: 2.15, y: 5.65, width: 1.1, depth: 0.3, ax: 3.5, ay: 5.45 },
+    { id: "bed-left", kind: "bed", name: "Кровать у стены", x: 2.2, y: 3.5, width: 0.95, depth: 2.05, ax: 3.5, ay: 4.3 },
+    { id: "bed-right", kind: "bed", name: "Вторая кровать", x: 4.95, y: 3.75, width: 0.95, depth: 2.05, ax: 4.6, ay: 4.6 },
+    { id: "nightstand-left", kind: "nightstand", name: "Тумбочка Соколовой", x: 2.2, y: 2.7, width: 0.75, depth: 0.45, ax: 3.25, ay: 2.85 },
+    { id: "nightstand-right", kind: "nightstand", name: "Тумбочка Лебедева", x: 4.3, y: 3.15, width: 0.65, depth: 0.45, ax: 4.05, ay: 3.35 },
+    // Against the back wall: front faces +Y, with an unobstructed approach in front of the doors.
+    { id: "wardrobe", kind: "wardrobe", name: "Платяной шкаф", x: 4.65, y: 2.15, width: 1.15, depth: 0.4, ax: 5.45, ay: 3.1 },
     { id: "poster", kind: "poster", name: "Агитационный плакат", x: 2, y: 3.1, width: 0, depth: 0, ax: 3.3, ay: 3.1 },
 ] as const;
 export const MATERIALS: Record<string, {
@@ -22,4 +23,4 @@ export const MATERIALS: Record<string, {
         ] },
     poster: { title: "Крепкий сон — бодрая смена!", image: "/assets/bedroom/poster.svg", pages: ["КРЕПКИЙ СОН — БОДРАЯ СМЕНА!\n\nСоблюдай тишину в часы отдыха. Береги труд товарища.\n\nВыцветший производственный плакат. На кремовой бумаге — спящий работник, подушка и красный круг утреннего солнца. Нижний край подклеен тканевой лентой."] },
 };
-export const BEDROOM_CONTENT = { version: "1.0", objects: BEDROOM_OBJECTS, materials: MATERIALS };
+export const BEDROOM_CONTENT = { version: "1.1", objects: BEDROOM_OBJECTS, materials: MATERIALS };

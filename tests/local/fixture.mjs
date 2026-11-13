@@ -20,7 +20,7 @@ export function fixtureContent() {
       ...raw.layout.doors.map((d) => ({ ...d, id: `door:${[...d.rooms].sort().join(":")}`, kind: "horizontal", label: d.rooms.join(" / "), initialMode: "auto", initialPosition: "open" })),
       ...raw.layout.stairs.map((d) => ({ ...d, id: `stair:${d.id}`, kind: "stair", label: d.label, initialMode: "auto", initialPosition: "open" })),
     ]),
-    fingerprint: fingerprint(canonicalStringify({data:raw,bedroom:BEDROOM_CONTENT})), sourceVersions: { balance: "1.1", layout: "1.0", engineering: "1.0", catalog: "1.0", dressing: "1.0", bedroom:"1.0" },
+    fingerprint: fingerprint(canonicalStringify({data:raw,bedroom:BEDROOM_CONTENT})), sourceVersions: { balance: "1.1", layout: "1.0", engineering: "1.0", catalog: "1.0", dressing: "1.0", bedroom:BEDROOM_CONTENT.version },
   };
 }
 export function fixture(seed = "engineering-20261112") {

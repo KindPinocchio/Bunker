@@ -1,9 +1,11 @@
 {
   "name": "bunker",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.0.0" },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
@@ -13,7 +15,9 @@
     "test:sim": "vitest run",
     "test:local": "node tests/sim/fungus-temperature.test.mjs && node tests/local/engineering.test.mjs",
     "demo": "node scripts/engineering-demo.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "node scripts/run-browser-tests.mjs",
+    "pretest:e2e": "node scripts/prepare-browser-preview.mjs",
+    "posttest:e2e": "node scripts/cleanup-browser-preview.mjs"
   },
   "dependencies": {
     "pixi.js": "8.14.0",
@@ -24,6 +28,7 @@
     "@types/node": "24.9.1",
     "typescript": "5.9.3",
     "vite": "7.1.12",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "esbuild": "0.25.12"
   }
 }

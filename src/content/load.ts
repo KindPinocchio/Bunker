@@ -146,7 +146,7 @@ export function loadContent(input: unknown = RAW_CONTENT) {
     requireCondition(Math.abs(balance.loot.rarity_probabilities.reduce((a, b) => a + b, 0) - 1) <= balance.simulation.numeric_epsilon, "Вероятности редкости не дают 1");
     sameIds(Object.keys(balance.loot.containers_per_room), roomIds, "места обыска");
     sameIds(dressing.rooms.map((r) => r.room_id), roomIds, "обстановка");
-    return { balance, rooms, doors, relays, sensors, pipes, items, dressing: dressing.rooms, layout, fingerprint: fingerprint(canonicalStringify({ data, bedroom: BEDROOM_CONTENT })), sourceVersions: { balance: balance.version, layout: "1.0", engineering: engineering.version, catalog: "1.0", dressing: "1.0", bedroom: "1.0" } };
+    return { balance, rooms, doors, relays, sensors, pipes, items, dressing: dressing.rooms, layout, fingerprint: fingerprint(canonicalStringify({ data, bedroom: BEDROOM_CONTENT })), sourceVersions: { balance: balance.version, layout: "1.0", engineering: engineering.version, catalog: "1.0", dressing: "1.0", bedroom: BEDROOM_CONTENT.version } };
   } catch (error) {
     throw new Error(`Ошибка данных комплекса: ${error instanceof Error ? error.message : String(error)}`);
   }
