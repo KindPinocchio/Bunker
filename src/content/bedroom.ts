@@ -23,4 +23,6 @@ export const MATERIALS: Record<string, {
         ] },
     poster: { title: "Крепкий сон — бодрая смена!", image: "/assets/bedroom/poster.svg", pages: ["КРЕПКИЙ СОН — БОДРАЯ СМЕНА!\n\nСоблюдай тишину в часы отдыха. Береги труд товарища.\n\nВыцветший производственный плакат. На кремовой бумаге — спящий работник, подушка и красный круг утреннего солнца. Нижний край подклеен тканевой лентой."] },
 };
-export const BEDROOM_CONTENT = { version: "1.1", objects: BEDROOM_OBJECTS, materials: MATERIALS };
+/** Authored opening width; room rectangles and door centres come from the approved plan. */
+export const EXPLORATION_LAYOUT = { rooms: ["u_bed1", "u_corridor"], portalWidthM: 0.9 } as const;
+export const BEDROOM_CONTENT = { version: "1.2", objects: BEDROOM_OBJECTS, materials: MATERIALS, exploration: EXPLORATION_LAYOUT };

@@ -3,16 +3,20 @@ import { BEDROOM_OBJECTS, MATERIALS } from "../content/bedroom.ts";
 import type { Command, ItemState, WorldState } from "./state.ts";
 import { PLAYER_RADIUS_M } from "./constants.ts";
 import { Pcg32 } from "./pcg32.ts";
+import { navigation, observableObject, observablePoint, reconcileSceneDoor, roomAt, sceneDoor } from "./exploration.ts";
+import { applyDeveloperCommand } from "./engine.ts";
 export const MOTION_HZ = 60;
-export function walkable(x: number, y: number): boolean {
+export function walkable(x: number, y: number, world?: WorldState, content?: Content): boolean {
+    if (world && content) return navigation(world, content)(x, y);
     const r = PLAYER_RADIUS_M;
     return x >= 2 + r && x <= 6 - r && y >= 2 + r && y <= 6 - r && !BEDROOM_OBJECTS.some(o => o.width > 0 && x > o.x - r && x < o.x + o.width + r && y > o.y - r && y < o.y + o.depth + r);
 }
-export function pathTo(x: number, y: number, tx: number, ty: number): {
+export function pathTo(x: number, y: number, tx: number, ty: number, world?: WorldState, content?: Content): {
     x: number;
     y: number;
 }[] {
-    if (!walkable(tx, ty))
+    const canWalk = world && content ? navigation(world, content) : walkable;
+    if (!canWalk(tx, ty))
         throw new Error("Здесь нельзя пройти");
     const size = 0.1, key = (x: number, y: number) => `${x},${y}`;
     const start = { x: Math.round(x / size), y: Math.round(y / size) }, target = { x: Math.round(tx / size), y: Math.round(ty / size) };
@@ -32,7 +36,7 @@ export function pathTo(x: number, y: number, tx: number, ty: number): {
         }
         for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
             const nx = node.x + dx!, ny = node.y + dy!, next = key(nx, ny), candidate = cost.get(k)! + Math.hypot(dx!, dy!);
-            if (!walkable(nx * size, ny * size) || !walkable(nx * size, node.y * size) || !walkable(node.x * size, ny * size))
+            if (!canWalk(nx * size, ny * size) || !canWalk(nx * size, node.y * size) || !canWalk(node.x * size, ny * size))
                 continue;
             if (candidate < (cost.get(next) ?? Infinity)) {
                 cost.set(next, candidate);
@@ -45,10 +49,11 @@ export function pathTo(x: number, y: number, tx: number, ty: number): {
     throw new Error("Нет свободного прохода");
 }
 export function inReach(world: WorldState, x: number, y: number, content: Content): boolean {
-    if (world.player.roomId !== "u_bed1" || Math.hypot(world.player.x - x, world.player.y - y) > content.balance.player.interaction_m)
+    if (!observablePoint(world, content, {x,y}) || Math.hypot(world.player.x - x, world.player.y - y) > content.balance.player.interaction_m)
         return false;
+    const canWalk = navigation(world, content);
     for (let i = 0; i <= 10; i++)
-        if (!walkable(world.player.x + (x - world.player.x) * i / 10, world.player.y + (y - world.player.y) * i / 10))
+        if (!canWalk(world.player.x + (x - world.player.x) * i / 10, world.player.y + (y - world.player.y) * i / 10))
             return false;
     return true;
 }
@@ -57,7 +62,7 @@ export function initializeBedroom(world: WorldState, content: Content): void {
     world.player.roomId = "u_bed1";
     world.player.x = 4;
     world.player.y = 2.5;
-    world.bedroom = { frame: 0, path: [], dx: 0, dy: 0, facingX: 0, facingY: 1, action: null, containers: {}, traits: {} };
+    world.bedroom = { flashlight: false, frame: 0, path: [], dx: 0, dy: 0, facingX: 0, facingY: 1, action: null, containers: {}, traits: {} };
     const b = world.bedroom;
     for (const o of BEDROOM_OBJECTS)
         if (o.kind === "nightstand" || o.kind === "wardrobe")
@@ -87,7 +92,7 @@ export function initializeBedroom(world: WorldState, content: Content): void {
 }
 function containerAccess(world: WorldState, id: string, content: Content, requireSearch = true) {
     const container = world.bedroom?.containers[id], object = BEDROOM_OBJECTS.find(o => o.id === id);
-    if (!container || !object || !inReach(world, object.ax, object.ay, content))
+    if (!container || !object || world.player.roomId !== "u_bed1" || !observableObject(world,content,id) || !inReach(world, object.ax, object.ay, content))
         throw new Error("Подойдите к месту хранения ближе");
     if (requireSearch && !container.searched)
         throw new Error("Сначала завершите обыск");
@@ -130,7 +135,9 @@ export function applyPlayerCommand(world: WorldState, command: Command, content:
         b.action = { kind, targetId, startFrame: b.frame, endFrame: b.frame + seconds * MOTION_HZ, slot, backpackSlot, toFloor };
     };
     if (command.type === "walk-to") {
-        b.path = pathTo(next.player.x, next.player.y, command.x, command.y);
+        const path = pathTo(next.player.x, next.player.y, command.x, command.y, next, content);
+        if (!observablePoint(next,content,command)) throw new Error("Место назначения не видно");
+        b.path = path;
         b.dx = 0;
         b.dy = 0;
     }
@@ -138,6 +145,15 @@ export function applyPlayerCommand(world: WorldState, command: Command, content:
         b.path = [];
         b.dx = command.dx;
         b.dy = command.dy;
+    }
+    else if (command.type === "flashlight") b.flashlight = command.enabled;
+    else if (command.type === "door-mode") {
+        const door = sceneDoor(content);
+        if (command.doorId !== door.id || Math.hypot(next.player.x-door.x,next.player.y-door.y)>content.balance.player.interaction_m || !observablePoint(next,content,door))
+            throw new Error("Подойдите к переключателю двери ближе");
+        const result = applyDeveloperCommand(next,command,content);
+        reconcileSceneDoor(result,content);
+        return result;
     }
     else if (command.type === "search-container") {
         const c = containerAccess(next, command.containerId, content, false);
@@ -208,6 +224,7 @@ export function advanceBedroomFrame(world: WorldState, content: Content): WorldS
         return world;
     let dx = b.dx, dy = b.dy, remaining = content.balance.player.walk_m_s / MOTION_HZ;
     const oldX = world.player.x, oldY = world.player.y;
+    const canWalk = navigation(world,content);
     if (b.path.length) {
         while (b.path.length && remaining > 1e-9) {
             const target = b.path[0]!;
@@ -219,7 +236,7 @@ export function advanceBedroomFrame(world: WorldState, content: Content): WorldS
                 continue;
             }
             const step = Math.min(remaining, length), nx = world.player.x + dx / length * step, ny = world.player.y + dy / length * step;
-            if (!walkable(nx, ny)) {
+            if (!canWalk(nx, ny)) {
                 b.path = [];
                 break;
             }
@@ -235,18 +252,19 @@ export function advanceBedroomFrame(world: WorldState, content: Content): WorldS
         if (!length)
             return world;
         const mx = dx / length * remaining, my = dy / length * remaining;
-        if (walkable(world.player.x + mx, world.player.y + my)) {
+        if (canWalk(world.player.x + mx, world.player.y + my)) {
             world.player.x += mx;
             world.player.y += my;
         }
         else {
-            if (walkable(world.player.x + mx, world.player.y))
+            if (canWalk(world.player.x + mx, world.player.y))
                 world.player.x += mx;
-            if (walkable(world.player.x, world.player.y + my))
+            if (canWalk(world.player.x, world.player.y + my))
                 world.player.y += my;
         }
     }
     const distance = Math.hypot(world.player.x - oldX, world.player.y - oldY);
+    world.player.roomId = roomAt(world.player,content,world.player.roomId)!.id;
     const heavy = world.player.hands && content.items.find(i => i.id === world.items[world.player.hands!]!.typeId)!.carry === "hands";
     const damage = distance * content.balance.clothing.movement_damage_per_m;
     for (const [slot, id] of Object.entries(world.player.clothing))
@@ -304,11 +322,12 @@ export function validateBedroom(world: WorldState, content: Content): void {
             throw new Error("Неожиданные данные спальни");
         return;
     }
-    if (world.player.roomId !== "u_bed1" || world.player.action)
+    if (roomAt(world.player,content,world.player.roomId)?.id !== world.player.roomId || world.player.action)
         throw new Error("Игрок вне игровой сцены");
-    if (!b || Math.floor(b.frame / MOTION_HZ) !== world.tick || !walkable(world.player.x, world.player.y))
+    const canWalk = navigation(world,content);
+    if (!b || Math.floor(b.frame / MOTION_HZ) !== world.tick || !canWalk(world.player.x, world.player.y))
         throw new Error("Неверное время или положение игрока");
-    if (b.path.some(p => !walkable(p.x, p.y)))
+    if (b.path.some(p => !canWalk(p.x, p.y)))
         throw new Error("Путь проходит через препятствие");
     if (![-1, 0, 1].includes(b.dx) || ![-1, 0, 1].includes(b.dy))
         throw new Error("Неверное направление движения");

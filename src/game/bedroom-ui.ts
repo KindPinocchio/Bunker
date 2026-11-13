@@ -1,6 +1,7 @@
 import "../bedroom.css";
 import { loadContent } from "../content/load";
 import { BEDROOM_OBJECTS, MATERIALS } from "../content/bedroom";
+import { observableObject, observablePoint, roomLight, sceneDoor } from "../sim/exploration";
 import { Session } from "./session";
 import { BedroomScene } from "../render/bedroom-scene";
 import { clothingProtection, inReach, itemAccessible } from "../sim/bedroom";
@@ -8,18 +9,17 @@ import type { Command, ItemState, WorldState } from "../sim/state";
 import { loadCheckpoint, saveCheckpoint } from "../persistence/checkpoint";
 const root = document.querySelector<HTMLDivElement>("#app")!;
 root.dataset.ready = "false";
-root.innerHTML = `<header class="game-header"><a href="/" class="game-logo">Б<span>Б У Н К Е Р<small>ЭКСПЕДИЦИЯ / ЖИЛОЙ БЛОК</small></span></a><div class="chapter">01 <span>СПАЛЬНЯ СОКОЛОВОЙ<small>Игровой срез · одна комната</small></span></div><a class="engineering-link" href="/?mode=engineering">Инженерный стенд ↗</a></header>
-<main class="game-layout"><section class="scene-panel"><div class="scene-heading"><span>ВЕРХНИЙ ЭТАЖ / СПАЛЬНЯ 01</span><span id="clock" data-testid="clock">00:00</span></div><div id="scene"></div><div class="scene-caption"><span class="live-dot"></span><span id="motion">Нажмите на свободный пол, чтобы идти</span><span id="position" data-testid="position"></span></div><div id="action-progress" hidden><span id="action-label" data-testid="action"></span><progress id="progress" max="1"></progress></div><div class="touch-pad" aria-label="Перемещение"><button data-dir="up" aria-label="Идти вверх">↑</button><button data-dir="left" aria-label="Идти влево">←</button><button data-dir="down" aria-label="Идти вниз">↓</button><button data-dir="right" aria-label="Идти вправо">→</button></div></section>
-<aside class="game-sidebar"><p class="overline">ЛИЧНЫЕ ВЕЩИ. ЧУЖАЯ ИСТОРИЯ.</p><h1>После смены</h1><p class="intro-text">Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.</p><div class="pause-row"><span id="run-state">НА ПАУЗЕ</span><button id="pause" class="accent">Продолжить</button></div><div class="bag-controls"><button id="inventory-open">Рюкзак <kbd>I</kbd></button><button id="equipment-open">Экипировка <kbd>C</kbd></button></div><label class="object-picker">Осмотреть<select id="object-picker"><option value="">Выберите предмет в комнате</option></select></label><section id="context" class="context-card"></section><p role="status" id="notice" aria-live="polite">Загрузка комнаты…</p><details class="save-panel"><summary>Экспедиция и сохранения</summary><label>Seed <input id="seed" value="bunker-bedroom-001" maxlength="200"></label><button id="new">Новая экспедиция</button><div class="two"><button id="save">Сохранить</button><button id="load">Загрузить</button></div><button id="export">Экспорт JSON ↗</button><label class="import-label">Импорт JSON ↙<input id="import" type="file" accept="application/json,.json"></label></details><p class="scope-note">Сейчас доступны движение, обыск, вещи и чтение. Переходы в другие комнаты, биология и воздействие среды на игрока — следующие этапы.</p></aside></main>
-<footer class="game-footer"><span>WASD / СТРЕЛКИ — ИДТИ · E — ОСМОТР · I — РЮКЗАК · C — ОДЕЖДА · ПРОБЕЛ — ПАУЗА</span><span>СБОРКА 0.3.3 · ЛОКАЛЬНОЕ СОХРАНЕНИЕ</span></footer>
+root.innerHTML = `<header class="game-header"><a href="/" class="game-logo">Б<span>Б У Н К Е Р<small>ЭКСПЕДИЦИЯ / ЖИЛОЙ БЛОК</small></span></a><div class="chapter">01 <span>ЖИЛОЙ БЛОК<small>Спальня и верхний коридор</small></span></div><a class="engineering-link" href="/?mode=engineering">Инженерный стенд ↗</a></header>
+<main class="game-layout"><section class="scene-panel"><div class="scene-heading"><span id="room-name" data-testid="room">ВЕРХНИЙ ЭТАЖ / СПАЛЬНЯ 01</span><span id="clock" data-testid="clock">00:00</span></div><div id="scene"></div><div class="scene-caption"><span class="live-dot"></span><span id="motion">Нажмите на свободный пол, чтобы идти</span><span id="position" data-testid="position"></span></div><div id="action-progress" hidden><span id="action-label" data-testid="action"></span><progress id="progress" max="1"></progress></div><div class="touch-pad" aria-label="Перемещение"><button data-dir="up" aria-label="Идти вверх">↑</button><button data-dir="left" aria-label="Идти влево">←</button><button data-dir="down" aria-label="Идти вниз">↓</button><button data-dir="right" aria-label="Идти вправо">→</button></div></section>
+<aside class="game-sidebar"><p class="overline">ЛИЧНЫЕ ВЕЩИ. ЧУЖАЯ ИСТОРИЯ.</p><h1 id="room-title">После смены</h1><p class="intro-text" id="room-intro">Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.</p><div class="pause-row"><span id="run-state">НА ПАУЗЕ</span><button id="pause" class="accent">Продолжить</button></div><div class="bag-controls"><button id="inventory-open">Рюкзак <kbd>I</kbd></button><button id="equipment-open">Экипировка <kbd>C</kbd></button></div><div class="light-controls"><button id="flashlight" aria-pressed="false">Фонарь · выкл <kbd>F</kbd></button><span id="light-state"></span></div><section id="door-controls" class="door-controls" aria-label="Дверь спальни"></section><label class="object-picker">Осмотреть<select id="object-picker"><option value="">Выберите предмет в комнате</option></select></label><section id="context" class="context-card"></section><p role="status" id="notice" aria-live="polite">Загрузка комнаты…</p><details class="save-panel"><summary>Экспедиция и сохранения</summary><label>Seed <input id="seed" value="bunker-bedroom-001" maxlength="200"></label><button id="new">Новая экспедиция</button><div class="two"><button id="save">Сохранить</button><button id="load">Загрузить</button></div><button id="export">Экспорт JSON ↗</button><label class="import-label">Импорт JSON ↙<input id="import" type="file" accept="application/json,.json"></label></details><p class="scope-note">Доступны спальня и верхний коридор. Прочие комнаты, лестницы, биология и опасности появятся в следующих этапах.</p></aside></main>
+<footer class="game-footer"><span>WASD / СТРЕЛКИ — ИДТИ · E — ОСМОТР · I — РЮКЗАК · C — ОДЕЖДА · F — ФОНАРЬ · ПРОБЕЛ — ПАУЗА</span><span>СБОРКА 0.4.0 · ЛОКАЛЬНОЕ СОХРАНЕНИЕ</span></footer>
 <section id="inventory" class="game-window" role="dialog" aria-label="Обмен предметами" hidden><div class="window-top"><div><p class="overline">ОБМЕН ПРЕДМЕТАМИ</p><h2>Всё, что можно унести</h2></div><button data-close="inventory" aria-label="Закрыть рюкзак">×</button></div><div class="exchange"><section><h3 id="source-title">Рядом на полу</h3><div id="source-items"></div></section><section><h3>Рюкзак <span id="bag-count"></span></h3><div id="bag-items" class="slots"></div><h3>В руках</h3><div id="hands-item"></div></section></div><p class="window-note">10 слотов в рюкзаке · 1 предмет в руках. Открытые окна не останавливают время.</p></section>
 <section id="equipment" class="game-window equipment-window" role="dialog" aria-label="Экипировка" hidden><div class="window-top"><div><p class="overline">ЭКИПИРОВКА</p><h2>Слой за слоем</h2></div><button data-close="equipment" aria-label="Закрыть экипировку">×</button></div><p id="protection"></p><div id="clothing-items"></div><p class="window-note">Надеть / снять: 5 с. Заменить: 10 с. Старая вещь защищает до конца замены. Для замены не нужен свободный слот.</p></section>
 <section id="reader" class="game-window reader-window" role="dialog" aria-label="Чтение материала" hidden><div class="window-top"><div><p class="overline">ЛИЧНЫЙ АРХИВ</p><h2 id="reader-title"></h2></div><button data-close="reader" aria-label="Закрыть материал">×</button></div><div id="reader-body"></div><div class="reader-controls"><button id="previous">← Назад</button><span id="page-label"></span><button id="next">Далее →</button><label id="zoom-label">Масштаб <input id="zoom" type="range" min="1" max="3" step="0.1" value="1"></label></div><p class="window-note">Читать можно и на паузе. Увеличенное изображение можно перетаскивать.</p></section>`;
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id)! as T;
 const content = loadContent();
 let session = new Session(content, "bunker-bedroom-001", "bedroom");
-for (const o of BEDROOM_OBJECTS)
-    el<HTMLSelectElement>("object-picker").add(new Option(o.name, o.id));
+let visibleKey = "";
 el<HTMLSelectElement>("object-picker").onchange = e => choose((e.target as HTMLSelectElement).value);
 const scene = new BedroomScene();
 let selected: string | null = null, windowKey = "", material: string | null = null, page = 0;
@@ -35,9 +35,9 @@ function execute(command: Command) { try {
 catch (error) {
     message(error instanceof Error ? error.message : String(error), true);
 } }
-function choose(id: string) { if (root.dataset.ready !== "true") return; selected = id; el<HTMLSelectElement>("object-picker").value = id; scene.select(id); windowKey = ""; render(); }
+function choose(id: string) { if (root.dataset.ready !== "true") return; if(id===sceneDoor(content).id){ el("door-controls").scrollIntoView({block:"nearest"}); return; } if(id&&!observableObject(session.view(),content,id))return; selected = id; el<HTMLSelectElement>("object-picker").value = id; scene.select(id); windowKey = ""; render(); }
 function button(text: string, action: () => void, disabled = false) { const b = document.createElement("button"); b.textContent = text; b.disabled = disabled; b.onclick = action; return b; }
-function accessibleSource(w: WorldState): string | null { const o = BEDROOM_OBJECTS.find(o => o.id === selected); return o && w.bedroom!.containers[o.id]?.searched && inReach(w, o.ax, o.ay, content) ? o.id : null; }
+function accessibleSource(w: WorldState): string | null { const o = BEDROOM_OBJECTS.find(o => o.id === selected); return w.player.roomId==="u_bed1" && o && w.bedroom!.containers[o.id]?.searched && inReach(w, o.ax, o.ay, content) ? o.id : null; }
 function openWindow(id: string) { el(id).hidden = false; windowKey = ""; render(); }
 function read(id: string) { material = id; page = 0; el("reader").hidden = false; renderReader(); }
 function itemCard(item: ItemState, w: WorldState, where: "source" | "bag" | "hands" | "worn") {
@@ -105,6 +105,26 @@ function renderWindows(w: WorldState) {
         wrap.append("Не надето"); return wrap; }));
     el("protection").textContent = `Теплоизоляция: ${heat.toFixed(0)} / 100 · Химическая защита: ${chemical.toFixed(0)} / 100`;
 }
+function renderDoor(w:WorldState) {
+    const panel=el("door-controls"),door=sceneDoor(content),state=w.doors[door.id]!;
+    panel.replaceChildren();panel.hidden=!observablePoint(w,content,door);
+    if(panel.hidden)return;
+    const title=document.createElement("h3");title.textContent="ДВЕРЬ СПАЛЬНИ";panel.append(title);
+    const status=document.createElement("p");status.id="door-status";status.dataset.testid="door-status";
+    const modes={open:"Открыть",closed:"Закрыть",auto:"Авто"};
+    status.textContent=`${state.position==="open"?"Открыта":"Закрыта"} · режим «${modes[state.mode]}»`;panel.append(status);
+    const near=Math.hypot(w.player.x-door.x,w.player.y-door.y)<=content.balance.player.interaction_m;
+    const locked=session.paused||!!w.bedroom!.action;
+    const row=document.createElement("div");row.className="door-modes";
+    for(const mode of ["open","closed","auto"] as const){
+      const control=button(modes[mode],()=>execute({type:"door-mode",doorId:door.id,mode}),locked||!near);
+      control.setAttribute("aria-pressed",String(state.mode===mode));row.append(control);
+    }
+    panel.append(row);
+    if(!near)panel.append(button("Подойти к двери",()=>execute({type:"walk-to",x:door.x,y:door.y+(w.player.roomId==="u_bed1"?.5:-.5)}),locked));
+    else panel.append(button(w.player.roomId==="u_bed1"?"В коридор":"В спальню",()=>execute({type:"walk-to",x:door.x,y:door.y+(w.player.roomId==="u_bed1"?-.5:.5)}),locked||state.position!=="open"));
+    if(w.power.source==="none"){const note=document.createElement("p");note.textContent="Нет питания: дверь удерживается открытой пружиной.";panel.append(note);}
+}
 function renderContext(w: WorldState) {
     const panel = el("context");
     panel.replaceChildren();
@@ -138,7 +158,26 @@ function renderContext(w: WorldState) {
 }
 function render() {
     const w = session.view(), b = w.bedroom!;
+    const visible=BEDROOM_OBJECTS.filter(o=>observableObject(w,content,o.id));
+    const signature=visible.map(o=>o.id).join(",");
+    if(signature!==visibleKey){
+      visibleKey=signature;
+      const picker=el<HTMLSelectElement>("object-picker");picker.replaceChildren(new Option("Выберите видимый предмет",""));
+      for(const o of visible)picker.add(new Option(o.name,o.id));
+      if(selected&&!visible.some(o=>o.id===selected)){selected=null;scene.select(null);windowKey="";}
+      picker.value=selected??"";
+    }
+    el<HTMLSelectElement>("object-picker").value=selected??"";
     scene.render(w);
+    const corridor=w.player.roomId==="u_corridor";
+    el("room-name").textContent=corridor?"ВЕРХНИЙ ЭТАЖ / КОРИДОР 01":"ВЕРХНИЙ ЭТАЖ / СПАЛЬНЯ 01";
+    el("room-title").textContent=corridor?"За порогом":"После смены";
+    el("room-intro").textContent=corridor?"Длинный проход тянется вдоль жилого блока. За открытым проёмом остаётся спальня.":"Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.";
+    el("flashlight").textContent=b.flashlight?"Фонарь · вкл  F":"Фонарь · выкл  F";
+    el("flashlight").setAttribute("aria-pressed",String(b.flashlight));
+    el<HTMLButtonElement>("flashlight").disabled=session.paused||!!b.action;
+    const light=roomLight(w,content,w.player.roomId);
+    el("light-state").textContent=light===1?"СЕТЕВОЙ СВЕТ":light>0?"АВАРИЙНЫЙ СВЕТ":"НЕТ ОСВЕЩЕНИЯ";
     el("clock").textContent = `${String(Math.floor(w.tick / 60)).padStart(2, "0")}:${String(w.tick % 60).padStart(2, "0")}`;
     el("position").textContent = `${w.player.x.toFixed(2)} / ${w.player.y.toFixed(2)}`;
     el("pause").textContent = session.paused ? "Продолжить" : "Пауза";
@@ -149,9 +188,10 @@ function render() {
         (el("progress") as HTMLProgressElement).value = (b.frame - b.action.startFrame) / (b.action.endFrame - b.action.startFrame);
     }
     el("motion").textContent = b.action ? "Действие нельзя прервать" : session.paused ? "На паузе · читать можно" : b.path.length || b.dx || b.dy ? "Шаги по линолеуму" : "Нажмите на мебель для осмотра";
-    const key = JSON.stringify([w.player, w.items, b.containers, !!b.action, session.paused, selected, Math.round(w.player.x * 10), Math.round(w.player.y * 10)]);
+    const key = JSON.stringify([w.player, w.items, w.doors, w.power.source, b.flashlight, visibleKey, b.containers, !!b.action, session.paused, selected, Math.round(w.player.x * 10), Math.round(w.player.y * 10)]);
     if (key !== windowKey) {
         windowKey = key;
+        renderDoor(w);
         renderContext(w);
         renderWindows(w);
     }
@@ -186,6 +226,7 @@ for (const close of root.querySelectorAll<HTMLButtonElement>("[data-close]"))
     close.onclick = () => { el(close.dataset.close!).hidden = true; };
 el("inventory-open").onclick = () => openWindow("inventory");
 el("equipment-open").onclick = () => openWindow("equipment");
+el("flashlight").onclick = () => execute({type:"flashlight",enabled:!session.view().bedroom!.flashlight});
 function stop() { keys.clear(); const b = session.view().bedroom!; if (!session.paused && !b.action && (b.dx || b.dy))
     execute({ type: "move-input", dx: 0, dy: 0 }); }
 function togglePause() { stop(); session.paused ? session.resume() : session.pause(); windowKey = ""; render(); }
@@ -251,6 +292,7 @@ else if (e.code === "Escape") {
             break;
         }
 }
+else if (e.code === "KeyF") { e.preventDefault(); execute({type:"flashlight",enabled:!session.view().bedroom!.flashlight}); }
 else if (e.code === "KeyE") {
     const w = session.view(), near = BEDROOM_OBJECTS.filter(o => inReach(w, o.ax, o.ay, content)).sort((a, b) => Math.hypot(w.player.x - a.ax, w.player.y - a.ay) - Math.hypot(w.player.x - b.ax, w.player.y - b.ay))[0];
     if (near)
@@ -283,6 +325,6 @@ for (const b of root.querySelectorAll<HTMLButtonElement>("[data-dir]")) {
         direction(); };
 }
 async function boot() { for (const b of root.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>("button,input,select"))
-    b.disabled = true; await scene.init(el("scene"), (x, y) => execute({ type: "walk-to", x, y }), choose); root.dataset.ready = "true"; for (const b of root.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>("button,input,select"))
-    b.disabled = false; message("Комната готова. Продолжите время и осмотрите тумбочку."); render(); let previous: number | null = null; function frame(now: number) { session.advance(previous === null ? 0 : Math.max(0, now - previous)); previous = now; render(); requestAnimationFrame(frame); } requestAnimationFrame(frame); }
+    b.disabled = true; await scene.init(el("scene"), content, (x, y) => execute({ type: "walk-to", x, y }), choose); root.dataset.ready = "true"; for (const b of root.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>("button,input,select"))
+    b.disabled = false; message("Жилой блок готов. Продолжите время: можно осмотреть тумбочку или выйти в коридор."); render(); let previous: number | null = null; function frame(now: number) { session.advance(previous === null ? 0 : Math.max(0, now - previous)); previous = now; render(); requestAnimationFrame(frame); } requestAnimationFrame(frame); }
 void boot().catch(e => message(`Не удалось открыть сцену: ${String(e)}`, true));

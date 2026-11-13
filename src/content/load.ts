@@ -17,7 +17,7 @@ const point = z.object({ room: id, x: number, y: number });
 const pair = z.tuple([id, id]);
 const balanceSchema = z.looseObject({
   version: z.literal("1.1"),
-  player: z.looseObject({ walk_m_s: positive, interaction_m: positive }),
+  player: z.looseObject({ walk_m_s: positive, interaction_m: positive, sight_m: positive, flashlight_range_m: positive, flashlight_cone_deg: positive.max(360), flashlight_near_m: positive }),
   simulation: z.object({ tick_s: z.literal(1), rng: z.literal("PCG32"), streams: z.tuple(RNG_STREAMS.map((s) => z.literal(s)) as [z.ZodLiteral<"world">, z.ZodLiteral<"loot">, z.ZodLiteral<"fungus">, z.ZodLiteral<"rats">, z.ZodLiteral<"equipment">]), numeric_epsilon: positive }),
   initial: z.looseObject({ temperature_c: number, water_cm: number.nonnegative(), battery_charge_fraction: number.min(0).max(1), doors: z.literal("open"), door_mode: z.literal("auto"), valves: z.literal("open"), pumps: z.literal("in_service"), pump_wear_range: range, installed_damage_range: range, loose_part_damage_range: range, relay_count: z.literal(35) }),
   fungus: z.looseObject({ growth_max_pp_s: positive, temperature_response: z.object({ kind: z.literal("triangular"), min_c: number, optimum_c: number, max_c: number }).refine((r) => r.min_c < r.optimum_c && r.optimum_c < r.max_c, "Неверные границы F(T)") }),

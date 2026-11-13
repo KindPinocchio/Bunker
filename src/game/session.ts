@@ -3,6 +3,7 @@ import { advanceBedroomFrame, applyPlayerCommand, finishBedroomAction, MOTION_HZ
 import { applyDeveloperCommand, stepWorld } from "../sim/engine";
 import { commandSchema, snapshotSchema, SCHEMA_VERSION, type ClockState, type Command, type LoggedCommand, type Snapshot, type WorldState } from "../sim/state";
 import { createWorld, validateWorld } from "../sim/world";
+import { reconcileSceneDoor } from "../sim/exploration";
 
 export class Session {
   private state: WorldState;
@@ -26,7 +27,10 @@ export class Session {
     while (this.timing.remainderMs + 1e-7 >= quantum) {
       if (this.state.bedroom) {
         advanceBedroomFrame(this.state, this.content);
-        if (this.state.bedroom.frame % MOTION_HZ === 0) this.state = stepWorld(this.state, this.content);
+        if (this.state.bedroom.frame % MOTION_HZ === 0) {
+          this.state = stepWorld(this.state, this.content);
+          reconcileSceneDoor(this.state, this.content);
+        }
         finishBedroomAction(this.state);
       } else this.state = stepWorld(this.state, this.content);
       this.timing.remainderMs = Math.max(0, this.timing.remainderMs - quantum);

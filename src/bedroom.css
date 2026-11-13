@@ -4,3 +4,5 @@
 .object-picker{display:block;font:10px monospace;color:#acb69b;margin-top:18px}.object-picker select{display:block;width:100%;background:#1b2b20;border:1px solid #4a5b42;color:#c4cbb2;padding:10px;margin-top:7px;font:12px Arial,sans-serif}
 
 button.accent:hover:enabled{background:#dccd92;border-color:#e5d9a4;color:#1d2a23}
+
+.light-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.light-controls>span{font:9px monospace;color:#acb69b}.door-controls{border-top:1px solid #3c503d;border-bottom:1px solid #3c503d;padding:8px 0 14px;margin-top:16px}.door-controls p{font:11px/1.6 monospace;color:#b8c0a0;margin:8px 0}.door-modes{display:flex;gap:6px;margin-bottom:10px}.door-modes>button{flex:1;padding:8px 5px}.door-modes>button[aria-pressed="true"]{border-color:#c2b77f;color:#e7dcaf;background:#3c4934}

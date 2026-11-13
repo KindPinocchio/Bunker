@@ -29,6 +29,7 @@ export const actionSchema = z.strictObject({
   reservations: z.array(z.strictObject({ itemId: text, location: itemLocationSchema })),
 });
 export const commandSchema = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("flashlight"), enabled: z.boolean() }),
   z.strictObject({ type: z.literal("walk-to"), x: value, y: value }),
   z.strictObject({ type: z.literal("move-input"), dx: value.int().min(-1).max(1), dy: value.int().min(-1).max(1) }),
   z.strictObject({ type: z.literal("search-container"), containerId: text }),
@@ -59,6 +60,7 @@ export const worldSchema = z.strictObject({
   seed: text.max(200), tick, status: z.literal("active"), nextEntitySequence: tick.positive(),
   profile: z.enum(["engineering","bedroom"]),
   bedroom: z.strictObject({
+    flashlight: z.boolean(),
     frame: tick, path: z.array(z.strictObject({x:value,y:value})), dx:value, dy:value, facingX:value, facingY:value,
     action:z.strictObject({kind:z.enum(["search","wear","remove"]),targetId:text,endFrame:tick,startFrame:tick,slot:slotSchema.nullable(),backpackSlot:tick.max(9).nullable(),toFloor:z.boolean()}).nullable(),
     containers:record(z.strictObject({id:text,searched:z.boolean(),capacity:tick.positive()})),
