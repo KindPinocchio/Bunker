@@ -8,7 +8,7 @@
 
 Инженерный стенд доступен по `/?mode=engineering`. В нём работают вода/тепло/лестницы, насосы и неисправности, сигналы датчиков и реле, ЦБУ, сеть и батарея. Его телеметрия и удалённые команды отделены от игрового интерфейса.
 
-Локально проходят **66 проверок Vitest**, **41 проверка без зависимостей**, сборка и **10 сценариев Chromium**. Рабочая ветка — [codex/bunker-engineering-ci](https://github.com/KindPinocchio/Bunker/tree/codex/bunker-engineering-ci). Независимая проверка предыдущей сборки 0.3.2 прошла в [GitHub Actions](https://github.com/KindPinocchio/Bunker/actions/runs/43366392100); результат CI 0.3.3 фиксируется в [отчёте исправления](docs/verification-depth-2026-11-13.md).
+Локально и в [GitHub Actions 0.3.3](https://github.com/KindPinocchio/Bunker/actions/runs/43421235540) проходят **66 проверок Vitest**, **41 проверка без зависимостей**, сборка и **10 сценариев Chromium**. Рабочая ветка — [codex/bunker-engineering-ci](https://github.com/KindPinocchio/Bunker/tree/codex/bunker-engineering-ci). Подробности и артефакты — в [отчёте исправления](docs/verification-depth-2026-11-13.md).
 
 
 ## Запуск без установки пакетов
