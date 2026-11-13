@@ -51,6 +51,13 @@ test("light follows the actual room relay and battery factor, independently of g
   expect(roomLight(w,content,"u_corridor")).toBe(0);expect(roomLight(w,content,"u_bed1")).toBe(.45);
   expect(geometricVisibility(w,content,{x:4,y:1})).toBe(true);expect(observablePoint(w,content,{x:4,y:1})).toBe(false);
 });
+test("wall poster visibility uses its physical wall point rather than its approach marker",()=>{
+  const w=game().view();w.power.source="none";w.bedroom!.flashlight=true;
+  expect(observablePoint(w,content,{x:3.3,y:3.1})).toBe(true);
+  expect(observableObject(w,content,"poster")).toBe(false);
+  w.bedroom!.facingX=-1;w.bedroom!.facingY=0;
+  expect(observableObject(w,content,"poster")).toBe(true);
+});
 test("blackout springs override saved manual mode; the flashlight obeys 1m, 6m and 50 degrees",()=>{
   const s=game();mode(s,"closed");let w=applyDeveloperCommand(s.view(),{type:"external-line",available:false},content);
   w=applyDeveloperCommand(w,{type:"battery-output",enabled:false},content);

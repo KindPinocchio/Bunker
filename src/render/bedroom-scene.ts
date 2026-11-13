@@ -68,9 +68,17 @@ export class BedroomScene {
       }
     }
     const wall=(roomId:string,x:number,y:number,width:number,axis:"x"|"y")=>{
-      const sprite=new Sprite(wallTexture),p=this.project(x,y);
-      sprite.setFromMatrix(new Matrix((axis==="x"?1:-1)*width*80/512,width*40/512,0,190/512,p.x,p.y-190));
-      this.room.addChild(sprite);this.walls.push({sprite,roomId,point:{x:x+(axis==="x"?width/2:0),y:y+(axis==="y"?width/2:0)}});
+      // Crop a continuous material into narrow light samples instead of lighting an entire wall at once.
+      let offset=0;
+      while(offset<width-1e-8){
+        const at=(axis==="x"?x:y)+offset,textureOffset=((at%4)+4)%4;
+        const span=Math.min(.25,width-offset,4-textureOffset),pixelWidth=span*128;
+        const texture=new Texture({source:wallTexture.source,frame:new Rectangle(wallTexture.frame.x+textureOffset*128,wallTexture.frame.y,pixelWidth,512)});
+        const sprite=new Sprite(texture),sx=x+(axis==="x"?offset:0),sy=y+(axis==="y"?offset:0),p=this.project(sx,sy);
+        sprite.setFromMatrix(new Matrix((axis==="x"?1:-1)*span*80/pixelWidth,span*40/pixelWidth,0,190/512,p.x,p.y-190));
+        this.room.addChild(sprite);this.walls.push({sprite,roomId,point:{x:sx+(axis==="x"?span/2:0),y:sy+(axis==="y"?span/2:0)}});
+        offset+=span;
+      }
     };
     // Split the bedroom back wall at the real opening instead of painting a door on a solid wall.
     const opening=sceneDoor(content),half=EXPLORATION_LAYOUT.portalWidthM/2;
@@ -81,8 +89,9 @@ export class BedroomScene {
     for(let x=corridor.x;x<corridor.x+corridor.width;x++)wall(corridor.id,x,corridor.y,Math.min(1,corridor.x+corridor.width-x),"x");
     wall(corridor.id,corridor.x,corridor.y,corridor.depth,"y");
     this.room.addChild(this.bedroomDecor);
-    const plaque=new Text({text:"СПАЛЬНЯ 01",style:{fontFamily:"monospace",fontSize:10,fill:0xb3b39b,letterSpacing:2}});
-    this.plaque=plaque;plaque.position.set(105,-34);plaque.skew.y=.45;this.bedroomDecor.addChild(plaque);
+    const plaque=new Text({text:"СПАЛЬНЯ 01",style:{fontFamily:"monospace",fontSize:8,fill:0xb3b39b,letterSpacing:.8}});
+    const sign=this.project(2.6,2);
+    this.plaque=plaque;plaque.position.set(sign.x,sign.y-96);plaque.skew.y=.5;this.bedroomDecor.addChild(plaque);
     this.poster=new Sprite(await Assets.load("/assets/bedroom/poster.svg"));
     this.poster.width=53;this.poster.height=73;this.poster.tint=0xbcb69b;
     const pp=this.project(2,3.1);this.poster.position.set(pp.x-35,pp.y-132);this.poster.skew.y=-.5;
@@ -173,10 +182,10 @@ export class BedroomScene {
       wall.sprite.tint=tint(wall.roomId==="u_bed1"?0xa5aa91:0x8d9984,Math.max(roomLight(world,this.content,wall.roomId),flashlightReaches(world,this.content,wall.point)?.85:0));
     }
     this.bedroomDecor.visible=world.player.roomId==="u_bed1";
-    this.plaque.visible=observablePoint(world,this.content,{x:4.4,y:2});
-    this.plaque.alpha=Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:4.4,y:2})?.9:0);
+    this.plaque.visible=[2.6,3.4].every(x=>observablePoint(world,this.content,{x,y:2}));
+    this.plaque.alpha=Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:3,y:2})?.9:0);
     this.poster.visible=observableObject(world,this.content,"poster");
-    this.poster.tint=tint(0xbcb69b,Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:3.3,y:3.1})?.9:0));
+    this.poster.tint=tint(0xbcb69b,Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:2,y:3.1})?.9:0));
     const opening=sceneDoor(this.content),closed=world.doors[opening.id]!.position==="closed";
     this.door.visible=observablePoint(world,this.content,opening);
     this.doorLeaf.visible=closed;

@@ -69,6 +69,7 @@ test("blackout renders black, flashlight reveals the floor and freezes on pause 
   await page.getByRole("button",{name:"Продолжить",exact:true}).click();
   await page.getByRole("button",{name:/Фонарь · выкл/}).click();
   await expect(canvas).toHaveAttribute("data-flashlight","true");
+  await expect(canvas).not.toHaveAttribute("data-visible-objects",/poster/);
   await page.getByRole("button",{name:"Пауза",exact:true}).click();
   await page.locator("#room-name").scrollIntoViewIfNeeded();
   const lit=await canvas.screenshot({path:"test-results/blackout-flashlight.png"});

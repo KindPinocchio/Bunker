@@ -75,9 +75,11 @@ export function observablePoint(world:WorldState,content:Content,p:Point):boolea
 }
 export function observableObject(world:WorldState,content:Content,id:string):boolean {
   const object=BEDROOM_OBJECTS.find(o=>o.id===id);
-  if(!object||!observablePoint(world,content,{x:object.ax,y:object.ay}))return false;
+  if(!object)return false;
+  if(object.width===0)return observablePoint(world,content,{x:object.x,y:object.y});
+  if(!observablePoint(world,content,{x:object.ax,y:object.ay}))return false;
   // Whole raster props are culled conservatively at portals; no hidden portion is exposed.
-  return object.width===0 || [[object.x,object.y],[object.x+object.width,object.y],[object.x,object.y+object.depth],[object.x+object.width,object.y+object.depth]].every(([x,y])=>observablePoint(world,content,{x:x!,y:y!}));
+  return [[object.x,object.y],[object.x+object.width,object.y],[object.x,object.y+object.depth],[object.x+object.width,object.y+object.depth]].every(([x,y])=>observablePoint(world,content,{x:x!,y:y!}));
 }
 export function visibilityPolygon(world:WorldState,content:Content,range=content.balance.player.sight_m,cone?:{angle:number;half:number}):Point[] {
   const walls=sceneWalls(world,content),angles:number[]=[];
