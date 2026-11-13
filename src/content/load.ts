@@ -1,9 +1,9 @@
 import { z } from "zod";
-import balanceSource from "../../data/bunker_balance_v1_1.json";
-import layoutSource from "../../docs/spec/bunker_floor_plan_v1.json";
-import engineeringSource from "../../docs/spec/bunker_engineering_manifest_v1.json";
-import catalogSource from "../../docs/spec/bunker_loot_catalog_v1.json";
-import dressingSource from "../../docs/spec/bunker_room_dressing_v1.json";
+import balanceSource from "../../data/bunker_balance_v1_1.json" with { type: "json" };
+import layoutSource from "../../docs/spec/bunker_floor_plan_v1.json" with { type: "json" };
+import engineeringSource from "../../docs/spec/bunker_engineering_manifest_v1.json" with { type: "json" };
+import catalogSource from "../../docs/spec/bunker_loot_catalog_v1.json" with { type: "json" };
+import dressingSource from "../../docs/spec/bunker_room_dressing_v1.json" with { type: "json" };
 import { canonicalStringify, compareIds, fingerprint } from "../sim/canonical";
 import { RNG_STREAMS } from "../sim/pcg32";
 import { BEDROOM_CONTENT } from "./bedroom";
