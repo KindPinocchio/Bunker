@@ -22,7 +22,7 @@ root.insertAdjacentHTML("beforeend",`<section id="controller" class="game-window
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id)! as T;
 const content = loadContent();
 let session = new Session(content, "bunker-bedroom-001", "bedroom");
-let visibleKey = "";
+let visibleKey = "", controllerKey="";
 el<HTMLSelectElement>("object-picker").onchange = e => choose((e.target as HTMLSelectElement).value);
 const scene = new BedroomScene();
 let selected: string | null = null, windowKey = "", material: string | null = null, page = 0;
@@ -202,14 +202,19 @@ function render() {
         (el("progress") as HTMLProgressElement).value = (b.frame - b.action.startFrame) / (b.action.endFrame - b.action.startFrame);
     }
     el("motion").textContent = b.action ? "Действие нельзя прервать" : session.paused ? "На паузе · читать можно" : b.path.length || b.dx || b.dy ? "Шаги по линолеуму" : "Нажмите на мебель для осмотра";
-    const key = JSON.stringify([w.tick,w.controller.lastSelfTest,w.controller.powered,w.player, w.items, w.doors, w.power.source, b.flashlight, visibleKey, b.containers, !!b.action, session.paused, selected, Math.round(w.player.x * 10), Math.round(w.player.y * 10)]);
+    const key = JSON.stringify([w.player, w.items, w.doors, w.power.source, b.flashlight, visibleKey, b.containers, !!b.action, session.paused, selected, Math.round(w.player.x * 10), Math.round(w.player.y * 10)]);
     if (key !== windowKey) {
         windowKey = key;
         renderDoor(w);
         renderContext(w);
         renderWindows(w);
-        if(!el("controller").hidden)renderControllerPanel(el("controller-body"),w,content,session.paused,()=>execute({type:"cbu-diagnostics"}));
+
     }
+    if(!el("controller").hidden){
+        const signature=JSON.stringify([w.tick,w.player,b.flashlight,b.facingX,b.facingY,w.power.source,w.controller.powered,w.controller.lastSelfTest,!!b.action,session.paused]);
+        if(signature!==controllerKey){controllerKey=signature;renderControllerPanel(el("controller-body"),w,content,session.paused,()=>execute({type:"cbu-diagnostics"}));}
+    }else controllerKey="";
+
 }
 function renderReader() { const m = MATERIALS[material!]!; el("reader-title").textContent = m.title; const body = el("reader-body"); body.replaceChildren(); if (page === 0 && m.image) {
     const viewport = document.createElement("div");
@@ -301,7 +306,7 @@ else if (e.code === "KeyI")
 else if (e.code === "KeyC")
     el("equipment").hidden ? openWindow("equipment") : el("equipment").hidden = true;
 else if (e.code === "Escape") {
-    for (const id of ["controller", "reader", "equipment", "inventory"])
+    for (const id of ["reader", "equipment", "controller", "inventory"])
         if (!el(id).hidden) {
             el(id).hidden = true;
             break;

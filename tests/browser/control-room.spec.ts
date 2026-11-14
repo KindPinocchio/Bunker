@@ -68,7 +68,9 @@ test("the panel shows signals, saves a paused diagnostic and loses remote access
   await page.getByRole("button",{name:"Закрыть панель ЦБУ",exact:true}).click();
   await page.getByRole("button",{name:"Продолжить",exact:true}).click();await open();
   await panel.getByRole("button",{name:"Самодиагностика · 5 с",exact:true}).click();
-  await page.clock.runFor(1200);await page.getByRole("button",{name:"Пауза",exact:true}).click();
+  const pumpSummary=panel.locator("summary").filter({hasText:"Шесть насосов"});
+  await pumpSummary.focus();await page.clock.runFor(1200);await expect(pumpSummary).toBeFocused();
+  await page.getByRole("button",{name:"Пауза",exact:true}).click();
   const remaining=await page.getByTestId("action").textContent();await page.clock.runFor(5000);
   await expect(page.getByTestId("action")).toHaveText(remaining!);
   await page.getByRole("button",{name:"Закрыть панель ЦБУ",exact:true}).click();
