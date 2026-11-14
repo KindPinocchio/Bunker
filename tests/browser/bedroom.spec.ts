@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import {prepareCorridor} from "./motion-helpers";
 test("bedroom search survives save/reload, transfers a photo and reads its reverse on pause", async ({ page }) => {
     test.setTimeout(60000);
     const errors: string[] = [];
@@ -98,15 +99,14 @@ test("a delayed animation frame catches up without losing simulation seconds", a
 });
 
 test("character turns through eight directions, walks, and freezes on pause", async ({page})=>{
-  await page.goto("/");
-  await expect(page.locator("#app")).toHaveAttribute("data-ready","true");
+  // Install before navigation so no native animation callback survives the clock swap.
+  // This checks facing on unobstructed floor; furniture detours have their own real-time test.
   await page.clock.install();
-  await page.getByRole("button",{name:"Продолжить",exact:true}).click();
+  await prepareCorridor(page);
   await page.clock.pauseAt(new Date(Date.now()+1000));
+  await page.getByRole("button",{name:"Продолжить",exact:true}).click();
+  await page.clock.runFor(50);
   const canvas=page.locator("#scene canvas");
-  await page.keyboard.down("s");await page.keyboard.down("a");
-  await page.clock.runFor(1200);
-  await page.keyboard.up("s");await page.keyboard.up("a");
   for(const [keys,facing]of [ [["d"],"e"], [["s","d"],"se"], [["s"],"s"], [["s","a"],"sw"], [["a"],"w"], [["a","w"],"nw"], [["w"],"n"], [["w","d"],"ne"] ] as const){
     for(const key of keys)await page.keyboard.down(key);
     await page.clock.runFor(facing==="e"?300:120);
