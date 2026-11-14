@@ -52,12 +52,16 @@ export class Session {
 
   static restore(content: Content, input: unknown): Session {
     try {
-      const legacy=typeof input==="object"&&input!==null&&"schemaVersion" in input&&input.schemaVersion===4;
+      const legacy=typeof input==="object"&&input!==null&&"schemaVersion" in input&&(input.schemaVersion===4||input.schemaVersion===5);
       if(legacy){
         const next=structuredClone(input) as Record<string,any>;
-        if(next.world?.schemaVersion!==4)throw new Error("Несогласованная версия снимка");
+        const oldVersion=next.schemaVersion;
+        if(next.world?.schemaVersion!==oldVersion)throw new Error("Несогласованная версия снимка");
+        if(next.world.contentFingerprint!==content.legacyFingerprint)throw new Error("Снимок создан с другим комплектом данных");
+        if(next.world.profile==="bedroom"&&!["u_bed1","u_corridor"].includes(next.world.player?.roomId))throw new Error("Игрок вне прежней игровой сцены");
+        next.world.contentFingerprint=content.fingerprint;
         next.schemaVersion=SCHEMA_VERSION;next.world.schemaVersion=SCHEMA_VERSION;
-        if(next.world.bedroom){
+        if(next.world.bedroom&&oldVersion===4){
           if("turnTarget" in next.world.bedroom)throw new Error("Смешанные версии движения");
           next.world.bedroom.turnTarget=null;
         }

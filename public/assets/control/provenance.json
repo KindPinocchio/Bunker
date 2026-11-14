@@ -1,0 +1,24 @@
+{
+  "file": "control-surfaces-v1.png",
+  "dimensions": [
+    1536,
+    1024
+  ],
+  "sha256": "ed6484f97160c75a6eb7f3bb1d583f87ee85051726fb96911bce5aec52ca4d02",
+  "git_blob": "59f7ad12d0d6423c0834884aea8f6a6e33a7b00c",
+  "generated_on": "2026-11-14",
+  "method": "OpenAI image generation, original material atlas; visual reference: existing generated bedroom atlas. No extracted game assets.",
+  "layout": {
+    "columns": 3,
+    "rows": 2,
+    "cell": 512,
+    "surfaces": [
+      "console front",
+      "olive steel",
+      "archive front",
+      "desk front",
+      "desktop with papers",
+      "brown leather"
+    ]
+  }
+}

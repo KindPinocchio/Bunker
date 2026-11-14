@@ -2,7 +2,7 @@ import type { Content } from "../content/load.ts";
 import { BEDROOM_OBJECTS, MATERIALS } from "../content/bedroom.ts";
 import type { Command, ItemState, WorldState } from "./state.ts";
 import { Pcg32 } from "./pcg32.ts";
-import { bedroomNavigation, navigation, observableObject, observablePoint, reconcileSceneDoor, roomAt, sceneDoor } from "./exploration.ts";
+import { bedroomNavigation, navigation, observableObject, observablePoint, reconcileSceneDoor, roomAt, sceneDoors, controllerAccessible,controllerReachable } from "./exploration.ts";
 import { applyDeveloperCommand } from "./engine.ts";
 import { simplifyPath, TURN_DEGREES_PER_SECOND, turnToward } from "./motion.ts";
 export const MOTION_HZ = 60;
@@ -51,11 +51,7 @@ export function pathTo(x: number, y: number, tx: number, ty: number, world?: Wor
 export function inReach(world: WorldState, x: number, y: number, content: Content): boolean {
     if (!observablePoint(world, content, {x,y}) || Math.hypot(world.player.x - x, world.player.y - y) > content.balance.player.interaction_m)
         return false;
-    const canWalk = navigation(world, content);
-    for (let i = 0; i <= 10; i++)
-        if (!canWalk(world.player.x + (x - world.player.x) * i / 10, world.player.y + (y - world.player.y) * i / 10))
-            return false;
-    return true;
+    return navigation(world,content).segment(world.player,{x,y});
 }
 export function initializeBedroom(world: WorldState, content: Content): void {
     world.profile = "bedroom";
@@ -128,7 +124,7 @@ export function applyPlayerCommand(world: WorldState, command: Command, content:
         throw new Error("Игровая сцена не создана");
     if (b.action || next.player.action)
         throw new Error("Дождитесь окончания действия");
-    const begin = (kind: "search" | "wear" | "remove", targetId: string, seconds: number, slot: keyof WorldState["player"]["clothing"] | null = null, backpackSlot: number | null = null, toFloor = false) => {
+    const begin = (kind: "search" | "wear" | "remove" | "cbu-diagnostics", targetId: string, seconds: number, slot: keyof WorldState["player"]["clothing"] | null = null, backpackSlot: number | null = null, toFloor = false) => {
         b.path = [];
         b.dx = 0;
         b.dy = 0;
@@ -148,12 +144,18 @@ export function applyPlayerCommand(world: WorldState, command: Command, content:
     }
     else if (command.type === "flashlight") b.flashlight = command.enabled;
     else if (command.type === "door-mode") {
-        const door = sceneDoor(content);
-        if (command.doorId !== door.id || Math.hypot(next.player.x-door.x,next.player.y-door.y)>content.balance.player.interaction_m || !observablePoint(next,content,door))
+        const door = sceneDoors(content).find(d=>d.id===command.doorId);
+        if (!door || Math.hypot(next.player.x-door.x,next.player.y-door.y)>content.balance.player.interaction_m || !observablePoint(next,content,door))
             throw new Error("Подойдите к переключателю двери ближе");
         const result = applyDeveloperCommand(next,command,content);
         reconcileSceneDoor(result,content);
         return result;
+    }
+    else if(command.type==="cbu-diagnostics"){
+        if(!controllerAccessible(next,content))throw new Error("Подойдите к консоли ЦБУ ближе");
+        if(next.player.hands)throw new Error("Для самодиагностики освободите руки");
+        if(!next.controller.powered||next.controller.damagePercent>=100)throw new Error("Панель ЦБУ не работает");
+        begin("cbu-diagnostics","controller",content.balance.actions_s.cbu_diagnostics!);
     }
     else if (command.type === "search-container") {
         const c = containerAccess(next, command.containerId, content, false);
@@ -293,6 +295,10 @@ export function finishBedroomAction(world: WorldState): void {
         return;
     if (a.kind === "search")
         b.containers[a.targetId]!.searched = true;
+    else if(a.kind==="cbu-diagnostics"){
+        if(world.controller.powered&&world.controller.damagePercent<100)
+            world.controller.lastSelfTest={tick:world.tick,damagePercent:world.controller.damagePercent};
+    }
     else {
         const item = world.items[a.targetId];
         if (a.kind === "wear" && item && item.location.kind === "backpack" && item.location.slot === a.backpackSlot && a.slot) {
@@ -348,6 +354,11 @@ export function validateBedroom(world: WorldState, content: Content): void {
             if (!o || !b.containers[o.id] || b.containers[o.id]!.searched || !inReach(world, o.ax, o.ay, content) || a.slot !== null || a.backpackSlot !== null || a.toFloor)
                 throw new Error("Неверный обыск");
             duration = o.kind === "wardrobe" ? content.balance.actions_s.rack_search! : content.balance.actions_s.nightstand_search!;
+        }
+        else if(a.kind==="cbu-diagnostics"){
+            if(a.targetId!=="controller"||!controllerReachable(world,content)||world.player.hands||a.slot!==null||a.backpackSlot!==null||a.toFloor)
+                throw new Error("Неверная самодиагностика ЦБУ");
+            duration=content.balance.actions_s.cbu_diagnostics!;
         }
         else if (a.kind === "wear") {
             if (!item || item.location.kind !== "backpack" || item.location.slot !== a.backpackSlot || !a.slot || content.items.find(i => i.id === item.typeId)?.equipment_slot !== a.slot || a.toFloor)

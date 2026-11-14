@@ -8,3 +8,11 @@ button.accent:hover:enabled{background:#dccd92;border-color:#e5d9a4;color:#1d2a2
 .light-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.light-controls>span{font:9px monospace;color:#acb69b}.door-controls{border-top:1px solid #3c503d;border-bottom:1px solid #3c503d;padding:8px 0 14px;margin-top:16px}.door-controls p{font:11px/1.6 monospace;color:#b8c0a0;margin:8px 0}.door-modes{display:flex;gap:6px;margin-bottom:10px}.door-modes>button{flex:1;padding:8px 5px}.door-modes>button[aria-pressed="true"]{border-color:#c2b77f;color:#e7dcaf;background:#3c4934}
 
 @media(min-width:651px){.scene-panel{align-self:start}}
+.controller-window { width:min(760px,calc(100vw - 32px)); }
+.controller-readings { width:100%;border-collapse:collapse;margin:20px 0;font-size:13px; }
+.controller-readings th,.controller-readings td { padding:9px 8px;border-bottom:1px solid var(--line,#394e3e);text-align:left; }
+.controller-readings th { color:#c7b776; }
+.controller-window details { margin:14px 0; }
+.controller-window summary { cursor:pointer;color:#c7b776; }
+.controller-window li { margin:8px 0; }
+.controller-lock { border:1px solid #6d6543;padding:12px;color:#c7b776; }

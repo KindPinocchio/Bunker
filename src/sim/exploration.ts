@@ -1,12 +1,14 @@
 import type { Content, RoomDefinition } from "../content/load.ts";
-import { BEDROOM_OBJECTS, EXPLORATION_LAYOUT } from "../content/bedroom.ts";
+import { EXPLORATION_LAYOUT } from "../content/bedroom.ts";
+import { PLAYABLE_ROOMS, SCENE_OBJECTS, CONTROL_OBJECTS, type SceneObject } from "../content/scene.ts";
 import { PLAYER_RADIUS_M } from "./constants.ts";
 import type { WorldState } from "./state.ts";
 
 export interface Point { x: number; y: number }
 export interface Wall { a: Point; b: Point }
 const EPS = 1e-8;
-export const sceneRooms = (content: Content) => content.rooms.filter(r => EXPLORATION_LAYOUT.rooms.some(id => id === r.id));
+export const sceneRooms = (content: Content) => content.rooms.filter(r => PLAYABLE_ROOMS.includes(r.id));
+export const sceneDoors = (content:Content) => content.doors.filter(d=>d.kind==="horizontal"&&d.rooms.every(id=>PLAYABLE_ROOMS.includes(id)));
 export const sceneDoor = (content: Content) => content.doors.find(d => d.kind === "horizontal" && d.rooms.includes("u_bed1") && d.rooms.includes("u_corridor"))!;
 export function roomAt(p: Point, content: Content, preferred = "u_bed1"): RoomDefinition | undefined {
   const rooms = sceneRooms(content).filter(r => p.x >= r.x - EPS && p.x <= r.x + r.width + EPS && p.y >= r.y - EPS && p.y <= r.y + r.depth + EPS);
@@ -15,7 +17,7 @@ export function roomAt(p: Point, content: Content, preferred = "u_bed1"): RoomDe
 
 /** Wall segments are the single source of truth for collision, rays and floor clipping. */
 export function sceneWalls(world: WorldState, content: Content): Wall[] {
-  const door = sceneDoor(content), half = EXPLORATION_LAYOUT.portalWidthM / 2;
+  const doors=sceneDoors(content),half = EXPLORATION_LAYOUT.portalWidthM / 2;
   const walls: Wall[] = [];
   for (const r of sceneRooms(content)) {
     for (const [a,b] of [
@@ -24,9 +26,12 @@ export function sceneWalls(world: WorldState, content: Content): Wall[] {
       [{x:r.x,y:r.y},{x:r.x,y:r.y+r.depth}],
       [{x:r.x+r.width,y:r.y},{x:r.x+r.width,y:r.y+r.depth}],
     ] as [Point,Point][]) {
-      if (a.y === b.y && a.y === door.y && door.x > a.x && door.x < b.x && world.doors[door.id]!.position === "open") {
-        walls.push({a,b:{x:door.x-half,y:a.y}}, {a:{x:door.x+half,y:a.y},b});
-      } else walls.push({a,b});
+      let parts=[{a,b}];
+      for(const door of doors.filter(d=>d.rooms.includes(r.id)&&world.doors[d.id]!.position==="open")){
+        parts=parts.flatMap(w=>w.a.y===w.b.y&&w.a.y===door.y&&door.x>w.a.x&&door.x<w.b.x?
+          [{a:w.a,b:{x:door.x-half,y:w.a.y}},{a:{x:door.x+half,y:w.a.y},b:w.b}]:[w]);
+      }
+      walls.push(...parts);
     }
   }
   return walls;
@@ -45,7 +50,7 @@ function segmentDistance(a:Wall,b:Wall):number {
   }
   return Math.min(distanceToWall(a.a,b),distanceToWall(a.b,b),distanceToWall(b.a,a),distanceToWall(b.b,a));
 }
-function crossesFurniture(a:Point,b:Point,o:typeof BEDROOM_OBJECTS[number]):boolean {
+function crossesFurniture(a:Point,b:Point,o:SceneObject):boolean {
   if(o.width===0)return false;
   let enter=0,exit=1;
   for(const [p,d,low,high] of [[a.x,b.x-a.x,o.x-PLAYER_RADIUS_M,o.x+o.width+PLAYER_RADIUS_M],[a.y,b.y-a.y,o.y-PLAYER_RADIUS_M,o.y+o.depth+PLAYER_RADIUS_M]]){
@@ -61,9 +66,9 @@ function navigationWithWalls(walls:Wall[],contains:(p:Point)=>boolean):Navigatio
   const r=PLAYER_RADIUS_M;
   const point=(x:number,y:number) => Number.isFinite(x) && Number.isFinite(y) && contains({x,y}) &&
     walls.every(w=>distanceToWall({x,y},w)>=r-EPS) &&
-    !BEDROOM_OBJECTS.some(o=>o.width>0&&x>o.x-r&&x<o.x+o.width+r&&y>o.y-r&&y<o.y+o.depth+r);
+    !SCENE_OBJECTS.some(o=>o.width>0&&x>o.x-r&&x<o.x+o.width+r&&y>o.y-r&&y<o.y+o.depth+r);
   return Object.assign(point,{segment:(a:Point,b:Point)=>point(a.x,a.y)&&point(b.x,b.y)&&
-    walls.every(w=>segmentDistance({a,b},w)>=r-EPS)&&!BEDROOM_OBJECTS.some(o=>crossesFurniture(a,b,o))});
+    walls.every(w=>segmentDistance({a,b},w)>=r-EPS)&&!SCENE_OBJECTS.some(o=>crossesFurniture(a,b,o))});
 }
 export function navigation(world: WorldState, content: Content):Navigation {
   return navigationWithWalls(sceneWalls(world,content),p=>!!roomAt(p,content));
@@ -106,12 +111,19 @@ export function observablePoint(world:WorldState,content:Content,p:Point):boolea
   return !!room&&geometricVisibility(world,content,p)&&(roomLight(world,content,room.id)>0||flashlightReaches(world,content,p));
 }
 export function observableObject(world:WorldState,content:Content,id:string):boolean {
-  const object=BEDROOM_OBJECTS.find(o=>o.id===id);
+  const object=SCENE_OBJECTS.find(o=>o.id===id);
   if(!object)return false;
   if(object.width===0)return observablePoint(world,content,{x:object.x,y:object.y});
   if(!observablePoint(world,content,{x:object.ax,y:object.ay}))return false;
   // Whole raster props are culled conservatively at portals; no hidden portion is exposed.
   return [[object.x,object.y],[object.x+object.width,object.y],[object.x,object.y+object.depth],[object.x+object.width,object.y+object.depth]].every(([x,y])=>observablePoint(world,content,{x:x!,y:y!}));
+}
+export function controllerReachable(world:WorldState,content:Content):boolean {
+  const console=CONTROL_OBJECTS[0],at={x:console.ax,y:console.ay};
+  return world.player.roomId===console.roomId&&Math.hypot(world.player.x-at.x,world.player.y-at.y)<=content.balance.player.interaction_m&&navigation(world,content).segment(world.player,at);
+}
+export function controllerAccessible(world:WorldState,content:Content):boolean {
+  return controllerReachable(world,content)&&observableObject(world,content,"controller-console");
 }
 export function visibilityPolygon(world:WorldState,content:Content,range=content.balance.player.sight_m,cone?:{angle:number;half:number}):Point[] {
   const walls=sceneWalls(world,content),angles:number[]=[];
@@ -133,11 +145,13 @@ export function visibilityPolygon(world:WorldState,content:Content,range=content
 /** Instant doors must not leave the collision footprint stranded inside a closed wall. */
 export function reconcileSceneDoor(world:WorldState,content:Content):void {
   const b=world.bedroom;if(!b)return;
-  const door=sceneDoor(content);
-  if(world.doors[door.id]!.position!=="closed")return;
-  if(Math.abs(world.player.x-door.x)<EXPLORATION_LAYOUT.portalWidthM/2+PLAYER_RADIUS_M&&Math.abs(world.player.y-door.y)<PLAYER_RADIUS_M){
-    world.player.y=door.y+(world.player.roomId==="u_bed1"?1:-1)*PLAYER_RADIUS_M;
+  for(const door of sceneDoors(content)){
+    if(world.doors[door.id]!.position!=="closed")continue;
+    if(Math.abs(world.player.x-door.x)<EXPLORATION_LAYOUT.portalWidthM/2+PLAYER_RADIUS_M&&Math.abs(world.player.y-door.y)<PLAYER_RADIUS_M){
+      const room=content.rooms.find(r=>r.id===world.player.roomId)!;
+      world.player.y=door.y+(room.y+room.depth/2>door.y?1:-1)*PLAYER_RADIUS_M;
+    }
   }
   const canWalk=navigation(world,content);
-  if(b.path.some(p=>!canWalk(p.x,p.y)||roomAt(p,content)?.id!==world.player.roomId))b.path=[];
+  if(b.path.some((p,i)=>!canWalk.segment(i?b.path[i-1]!:world.player,p)))b.path=[];
 }

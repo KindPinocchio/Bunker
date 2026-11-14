@@ -1,14 +1,17 @@
 import { Application, Assets, Container, Graphics, Matrix, Mesh, MeshGeometry, Polygon, Rectangle, Sprite, Text, Texture } from "pixi.js";
-import { BEDROOM_OBJECTS } from "../content/bedroom";
 import type { Content } from "../content/load";
 import { EXPLORATION_LAYOUT } from "../content/bedroom";
 import { flashlightReaches, observableObject, observablePoint, roomLight, sceneDoor, visibilityPolygon, type Point } from "../sim/exploration";
 import type { WorldState } from "../sim/state";
 import { characterFrame, FacingTracker, WORKER_ART } from "./character-frame";
 import { orderGroundFootprints, playerDepthFootprint, type DepthFootprint } from "./depth-order";
-import { CAMERA, project, unproject } from "./projection";
+import { CAMERA, project, unproject,projectOffset } from "./projection";
 import { boxPropGeometry } from "./prop-geometry";
 import { BEDROOM_ART } from "./bedroom-art";
+import { SCENE_OBJECTS, PLAYABLE_ROOMS } from "../content/scene";
+import { CONTROL_ATLAS,controlPropGeometry } from "./control-art";
+import { sceneDoors } from "../sim/exploration";
+import type { DoorDefinition } from "../content/load";
 
 /** Raster assets use authored ground pivots; simulation geometry remains in metres. */
 export class BedroomScene {
@@ -24,8 +27,9 @@ export class BedroomScene {
   private facingTracker=new FacingTracker();
   private motionSeed:string|null=null;
   private props = new Map<string, Container>();
-  private readonly depthProps: DepthFootprint[] = BEDROOM_OBJECTS.filter(o=>o.kind!=="poster").map(o=>({id:o.id,x:o.x,y:o.y,width:o.width,depth:o.depth}));
+  private readonly depthProps: DepthFootprint[] = SCENE_OBJECTS.filter(o=>o.kind!=="poster").map(o=>({id:o.id,x:o.x,y:o.y,width:o.width,depth:o.depth}));
   private markers = new Graphics();
+  private consoleScreensOff=new Graphics();
   private floors = new Container();
   private torchFloors = new Container();
   private floorMask = new Graphics();
@@ -33,8 +37,7 @@ export class BedroomScene {
   private floorSprites: {sprite:Sprite;roomId:string;torch:boolean}[] = [];
   private walls: {sprite:Sprite;roomId:string;point:Point}[] = [];
   private bedroomDecor = new Container();
-  private door = new Container();
-  private doorLeaf!: Sprite;
+  private doors:{definition:DoorDefinition;prop:Container;leaf:Sprite;label:string}[]=[];
   private poster!: Sprite;
   private plaque!: Text;
   private content!: Content;
@@ -62,7 +65,7 @@ export class BedroomScene {
     this.floors.mask=this.floorMask; this.torchFloors.mask=this.torchMask;
     const floorTexture=frame(BEDROOM_ART.floor.column,BEDROOM_ART.floor.row,materialAtlas);
     const wallTexture=frame(BEDROOM_ART.wall.column,BEDROOM_ART.wall.row,materialAtlas);
-    for(const r of content.rooms.filter(r=>EXPLORATION_LAYOUT.rooms.some(id=>id===r.id))){
+    for(const r of content.rooms.filter(r=>PLAYABLE_ROOMS.includes(r.id))){
       for(let x=r.x;x<r.x+r.width;x+=4)for(let y=r.y;y<r.y+r.depth;y+=4){
         const width=Math.min(4,r.x+r.width-x),depth=Math.min(4,r.y+r.depth-y),p=this.project(x,y);
         for(const torch of [false,true]){
@@ -93,8 +96,12 @@ export class BedroomScene {
     wall(bedroom.id,bedroom.x,bedroom.y,bedroom.depth,"y");
     wall(bedroom.id,bedroom.x,bedroom.y,opening.x-half-bedroom.x,"x");
     wall(bedroom.id,opening.x+half,bedroom.y,bedroom.x+bedroom.width-opening.x-half,"x");
-    for(let x=corridor.x;x<corridor.x+corridor.width;x++)wall(corridor.id,x,corridor.y,Math.min(1,corridor.x+corridor.width-x),"x");
+    const control=content.rooms.find(r=>r.id==="u_control")!,controlDoor=sceneDoors(content).find(d=>d.rooms.includes(control.id))!;
+    wall(corridor.id,corridor.x,corridor.y,controlDoor.x-half-corridor.x,"x");
+    wall(corridor.id,controlDoor.x+half,corridor.y,corridor.x+corridor.width-controlDoor.x-half,"x");
     wall(corridor.id,corridor.x,corridor.y,corridor.depth,"y");
+    wall(control.id,control.x,control.y,control.width,"x");
+    wall(control.id,control.x,control.y,control.depth,"y");
     this.room.addChild(this.bedroomDecor);
     const plaque=new Text({text:"СПАЛЬНЯ 01",style:{fontFamily:"monospace",fontSize:8,fill:0xb3b39b,letterSpacing:.8}});
     const sign=this.project(2.6,2);
@@ -108,20 +115,26 @@ export class BedroomScene {
     this.bedroomDecor.addChild(this.poster);
     this.actors.sortableChildren=true;this.markers.label="approach-marker";
     this.room.addChild(this.actors);this.actors.addChild(this.markers);
-    const door=this.project(opening.x,opening.y);
-    this.door.label="bedroom-door";this.door.position.set(door.x,door.y);
+    for(const definition of sceneDoors(content)){
+    const door=this.project(definition.x,definition.y),prop=new Container();
+    const label=definition.id===opening.id?"bedroom-door":"control-door";
+    prop.label=label;prop.position.set(door.x,door.y);
     const doorHeight=1.65*CAMERA.vertical;
-    this.doorLeaf=new Sprite(wallTexture);
-    this.doorLeaf.setFromMatrix(new Matrix(half*CAMERA.x*2/512,half*CAMERA.floorY*2/512,0,doorHeight/512,-half*CAMERA.x,-doorHeight-half*CAMERA.floorY));
-    this.doorLeaf.tint=0x657364;this.door.addChild(this.doorLeaf);
+    const leaf=new Sprite(wallTexture);
+    leaf.setFromMatrix(new Matrix(half*CAMERA.x*2/512,half*CAMERA.floorY*2/512,0,doorHeight/512,-half*CAMERA.x,-doorHeight-half*CAMERA.floorY));
+    leaf.tint=0x657364;prop.addChild(leaf);
     const frameGraphic=new Graphics();
     frameGraphic.poly([-half*CAMERA.x,-half*CAMERA.floorY,-half*CAMERA.x,-doorHeight-half*CAMERA.floorY,half*CAMERA.x,-doorHeight+half*CAMERA.floorY,half*CAMERA.x,half*CAMERA.floorY]).stroke({color:0x7d806b,width:5});
     frameGraphic.moveTo(-half*CAMERA.x,-half*CAMERA.floorY).lineTo(half*CAMERA.x,half*CAMERA.floorY).stroke({color:0xa89b73,width:3});
-    this.door.addChild(frameGraphic);
-    this.door.hitArea=new Polygon([-half*CAMERA.x,-half*CAMERA.floorY,-half*CAMERA.x,-doorHeight-half*CAMERA.floorY,half*CAMERA.x,-doorHeight+half*CAMERA.floorY,half*CAMERA.x,half*CAMERA.floorY]);
-    this.door.eventMode="static";this.door.cursor="pointer";
-    this.door.on("pointertap",e=>{e.stopPropagation();onObject(opening.id);});this.actors.addChild(this.door);
-    for(const o of BEDROOM_OBJECTS){
+    prop.addChild(frameGraphic);
+    prop.hitArea=new Polygon([-half*CAMERA.x,-half*CAMERA.floorY,-half*CAMERA.x,-doorHeight-half*CAMERA.floorY,half*CAMERA.x,-doorHeight+half*CAMERA.floorY,half*CAMERA.x,half*CAMERA.floorY]);
+    prop.eventMode="static";prop.cursor="pointer";
+    prop.on("pointertap",e=>{e.stopPropagation();onObject(definition.id);});this.actors.addChild(prop);
+    this.doors.push({definition,prop,leaf,label});
+    }
+    const controlAtlas:Texture=await Assets.load(CONTROL_ATLAS);
+    if(controlAtlas.width!==1536||controlAtlas.height!==1024)throw new Error("Неверный размер атласа диспетчерской");
+    for(const o of SCENE_OBJECTS){
       if(o.kind==="poster")continue;
       const p=this.project(o.x,o.y);
       let prop:Container;
@@ -132,11 +145,22 @@ export class BedroomScene {
         const d=2*a*CAMERA.floorY/CAMERA.x/(sx-sy),b=a*CAMERA.floorY/CAMERA.x-d*sx;
         sprite.setFromMatrix(new Matrix(a,b,0,d,p.x-a*art.pivot[0]!,p.y-b*art.pivot[0]!-d*art.pivot[1]!));
         sprite.hitArea=new Polygon([...art.hit]);prop=sprite;
-      }else{
+      }else if(o.kind==="wardrobe"||o.kind==="nightstand"){
         const data=boxPropGeometry(o.kind,o.width,o.depth);
         const mesh=new Mesh({texture:atlas,geometry:new MeshGeometry({positions:data.positions,uvs:data.uvs,indices:data.indices})});
         mesh.position.set(p.x,p.y);prop=mesh;
         if(o.kind==="wardrobe")this.app.canvas.dataset.wardrobeRoof=JSON.stringify(Array.from({length:4},(_,i)=>[mesh.geometry.positions[16+i*2]!+p.x,mesh.geometry.positions[17+i*2]!+p.y]));
+      }else{
+        const data=controlPropGeometry(o.kind,o.width,o.depth);
+        const mesh=new Mesh({texture:controlAtlas,geometry:new MeshGeometry({positions:data.positions,uvs:data.uvs,indices:data.indices})});
+        mesh.position.set(p.x,p.y);prop=mesh;
+        if(o.kind==="console"){
+          for(const [left,right] of [[.095,.47],[.535,.915]]){
+            const points=[[left,.105],[right,.105],[right,.345],[left,.345]].flatMap(([u,v])=>{
+              const q=projectOffset(u!*o.width,o.depth,1.4*(1-v!));return [q.x,q.y];
+            });this.consoleScreensOff.poly(points).fill(0x080d09);
+          }prop.addChild(this.consoleScreensOff);
+        }
       }
       prop.label=o.id;prop.eventMode="static";prop.cursor="pointer";
       prop.on("pointertap",e=>{e.stopPropagation();onObject(o.id);});
@@ -173,7 +197,8 @@ export class BedroomScene {
     const portal=sceneDoor(this.content);
     const follow=this.cameraRoom==="u_bed1"?0:Math.max(0,Math.min(1,Math.max((portal.y-this.cameraPoint.y)/.8,(Math.abs(this.cameraPoint.x-portal.x)-.3)/1.5)));
     const bedroomOrigin={x:w/2,y:h/2-(floorHeight-wallHeight)*this.scale/2};
-    this.origin={x:bedroomOrigin.x-focus.x*this.scale*follow,y:bedroomOrigin.y+(h*.67-focus.y*this.scale-bedroomOrigin.y)*follow};
+    const anchorY=h*(this.cameraRoom==="u_control"?.67-.17*Math.min(1,Math.max(0,-this.cameraPoint.y/1.5)):.67);
+    this.origin={x:bedroomOrigin.x-focus.x*this.scale*follow,y:bedroomOrigin.y+(anchorY-focus.y*this.scale-bedroomOrigin.y)*follow};
     this.room.position.set(this.origin.x, this.origin.y); this.room.scale.set(this.scale); this.app.stage.hitArea = this.app.screen;
     this.app.canvas.dataset.originX=String(this.origin.x);this.app.canvas.dataset.originY=String(this.origin.y);this.app.canvas.dataset.sceneScale=String(this.scale);
   }
@@ -213,11 +238,12 @@ export class BedroomScene {
     this.plaque.alpha=Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:3,y:2})?.9:0);
     this.poster.visible=observableObject(world,this.content,"poster");
     this.poster.tint=tint(0xbcb69b,Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:2,y:3.1})?.9:0));
-    const opening=sceneDoor(this.content),closed=world.doors[opening.id]!.position==="closed";
-    this.door.visible=observablePoint(world,this.content,opening);
-    this.doorLeaf.visible=closed;
-    this.door.alpha=closed&&world.player.roomId==="u_corridor"?.5:1;
-    this.door.tint=tint(0xffffff,Math.max(roomLight(world,this.content,world.player.roomId),flashlightReaches(world,this.content,opening)?.9:0));
+    for(const door of this.doors){
+      const closed=world.doors[door.definition.id]!.position==="closed";
+      door.prop.visible=observablePoint(world,this.content,door.definition);door.leaf.visible=closed;
+      door.prop.alpha=closed&&world.player.roomId==="u_corridor"?.5:1;
+      door.prop.tint=tint(0xffffff,Math.max(roomLight(world,this.content,world.player.roomId),flashlightReaches(world,this.content,door.definition)?.9:0));
+    }
     this.player.visible=roomLight(world,this.content,world.player.roomId)>0||b.flashlight;
     this.player.tint=tint(0xffffff,Math.max(roomLight(world,this.content,world.player.roomId),b.flashlight?.9:0));
     this.playerShadow.visible=this.player.visible;
@@ -237,22 +263,23 @@ export class BedroomScene {
     this.app.canvas.dataset.headingX=String(b.facingX);this.app.canvas.dataset.headingY=String(b.facingY);
     this.app.canvas.dataset.turning=String(b.turnTarget!==null);
     this.app.canvas.dataset.waypoints=String(b.path.length);
-    const footprints: DepthFootprint[] = [...this.depthProps,playerDepthFootprint(world.player.x,world.player.y),{id:"bedroom-door",x:opening.x-EXPLORATION_LAYOUT.portalWidthM/2,y:opening.y,width:EXPLORATION_LAYOUT.portalWidthM,depth:0}];
-    this.markers.clear(); this.markers.visible = this.selected !== null && (this.selected===opening.id?this.door.visible:observableObject(world,this.content,this.selected));
+    const footprints: DepthFootprint[] = [...this.depthProps,playerDepthFootprint(world.player.x,world.player.y),...this.doors.map(d=>({id:d.label,x:d.definition.x-EXPLORATION_LAYOUT.portalWidthM/2,y:d.definition.y,width:EXPLORATION_LAYOUT.portalWidthM,depth:0}))];
+    this.markers.clear(); this.markers.visible = this.selected !== null && observableObject(world,this.content,this.selected);
     if (this.selected && this.markers.visible) {
-      const o = BEDROOM_OBJECTS.find(o => o.id === this.selected) ?? {ax:opening.x,ay:opening.y+(world.player.roomId==="u_bed1"?.5:-.5)}, m = this.project(o.ax, o.ay);
+      const o = SCENE_OBJECTS.find(o => o.id === this.selected)!, m = this.project(o.ax, o.ay);
       footprints.push({id:"approach-marker",x:o.ax,y:o.ay,width:0,depth:0,priority:0});
       this.markers.ellipse(m.x, m.y, 14, 14*CAMERA.floorY/CAMERA.x).stroke({ color: 0xc7b776, width: 1, alpha: .8 });
     }
     for (const [id,sprite] of this.props){
       sprite.visible=observableObject(world,this.content,id);
-      const object=BEDROOM_OBJECTS.find(o=>o.id===id)!;
-      sprite.tint=tint(id===this.selected?0xffedc5:0xffffff,Math.max(roomLight(world,this.content,"u_bed1"),flashlightReaches(world,this.content,{x:object.ax,y:object.ay})?.9:0));
+      const object=SCENE_OBJECTS.find(o=>o.id===id)!;
+      sprite.tint=tint(id===this.selected?0xffedc5:0xffffff,Math.max(roomLight(world,this.content,object.roomId),flashlightReaches(world,this.content,{x:object.ax,y:object.ay})?.9:0));
     }
+    this.consoleScreensOff.visible=!world.controller.powered||world.controller.damagePercent>=100;
     for (const [index,id] of orderGroundFootprints(footprints).entries()) {
       const layer=index*4;
       if(id==="player"){this.playerShadow.zIndex=layer;this.player.zIndex=layer+1;}
-      else if(id==="bedroom-door")this.door.zIndex=layer;
+      else if(this.doors.some(d=>d.label===id))this.doors.find(d=>d.label===id)!.prop.zIndex=layer;
       else if(id==="approach-marker")this.markers.zIndex=layer;
       else this.props.get(id)!.zIndex=layer;
     }
@@ -261,9 +288,10 @@ export class BedroomScene {
     this.app.canvas.dataset.playerY = String(world.player.y);
     this.app.canvas.dataset.depthOrder = this.actors.children.filter(child=>child.visible).map(child=>child.label).join(",");
     this.app.canvas.dataset.room=world.player.roomId;
-    this.app.canvas.dataset.doorState=world.doors[opening.id]!.position;
+    this.app.canvas.dataset.doorState=world.doors[sceneDoor(this.content).id]!.position;
+    this.app.canvas.dataset.controlDoorState=world.doors[this.doors.find(d=>d.label==="control-door")!.definition.id]!.position;
     this.app.canvas.dataset.light=String(roomLight(world,this.content,world.player.roomId));
     this.app.canvas.dataset.flashlight=String(b.flashlight);
-    this.app.canvas.dataset.visibleObjects=BEDROOM_OBJECTS.filter(o=>observableObject(world,this.content,o.id)).map(o=>o.id).join(",");
+    this.app.canvas.dataset.visibleObjects=SCENE_OBJECTS.filter(o=>observableObject(world,this.content,o.id)).map(o=>o.id).join(",");
   }
 }

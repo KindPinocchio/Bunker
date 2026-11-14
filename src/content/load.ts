@@ -7,6 +7,7 @@ import dressingSource from "../../docs/spec/bunker_room_dressing_v1.json" with {
 import { canonicalStringify, compareIds, fingerprint } from "../sim/canonical";
 import { RNG_STREAMS } from "../sim/pcg32";
 import { BEDROOM_CONTENT } from "./bedroom";
+import { SCENE_CONTENT } from "./scene";
 
 const id = z.string().min(1).regex(/^[a-zA-Z0-9_:.-]+$/);
 const number = z.number().finite();
@@ -146,7 +147,10 @@ export function loadContent(input: unknown = RAW_CONTENT) {
     requireCondition(Math.abs(balance.loot.rarity_probabilities.reduce((a, b) => a + b, 0) - 1) <= balance.simulation.numeric_epsilon, "Вероятности редкости не дают 1");
     sameIds(Object.keys(balance.loot.containers_per_room), roomIds, "места обыска");
     sameIds(dressing.rooms.map((r) => r.room_id), roomIds, "обстановка");
-    return { balance, rooms, doors, relays, sensors, pipes, items, dressing: dressing.rooms, layout, fingerprint: fingerprint(canonicalStringify({ data, bedroom: BEDROOM_CONTENT })), sourceVersions: { balance: balance.version, layout: "1.0", engineering: engineering.version, catalog: "1.0", dressing: "1.0", bedroom: BEDROOM_CONTENT.version } };
+    return { balance, rooms, doors, relays, sensors, pipes, items, dressing: dressing.rooms, layout,
+      legacyFingerprint:fingerprint(canonicalStringify({data,bedroom:BEDROOM_CONTENT})),
+      fingerprint:fingerprint(canonicalStringify({data,bedroom:BEDROOM_CONTENT,scene:SCENE_CONTENT})),
+      sourceVersions:{balance:balance.version,layout:"1.0",engineering:engineering.version,catalog:"1.0",dressing:"1.0",bedroom:BEDROOM_CONTENT.version,scene:SCENE_CONTENT.version} };
   } catch (error) {
     throw new Error(`Ошибка данных комплекса: ${error instanceof Error ? error.message : String(error)}`);
   }

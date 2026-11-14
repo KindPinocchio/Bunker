@@ -1,21 +1,24 @@
 import "../bedroom.css";
 import { loadContent } from "../content/load";
 import { BEDROOM_OBJECTS, MATERIALS } from "../content/bedroom";
-import { observableObject, observablePoint, roomLight, sceneDoor } from "../sim/exploration";
+import { observableObject, observablePoint, roomLight, sceneDoor, sceneDoors, controllerAccessible } from "../sim/exploration";
 import { Session } from "./session";
 import { BedroomScene } from "../render/bedroom-scene";
 import { clothingProtection, inReach, itemAccessible } from "../sim/bedroom";
 import type { Command, ItemState, WorldState } from "../sim/state";
 import { loadCheckpoint, saveCheckpoint } from "../persistence/checkpoint";
+import { SCENE_OBJECTS } from "../content/scene";
+import { renderControllerPanel } from "./controller-panel";
 const root = document.querySelector<HTMLDivElement>("#app")!;
 root.dataset.ready = "false";
-root.innerHTML = `<header class="game-header"><a href="/" class="game-logo">Б<span>Б У Н К Е Р<small>ЭКСПЕДИЦИЯ / ЖИЛОЙ БЛОК</small></span></a><div class="chapter">01 <span>ЖИЛОЙ БЛОК<small>Спальня и верхний коридор</small></span></div><a class="engineering-link" href="/?mode=engineering">Инженерный стенд ↗</a></header>
+root.innerHTML = `<header class="game-header"><a href="/" class="game-logo">Б<span>Б У Н К Е Р<small>ЭКСПЕДИЦИЯ / ЖИЛОЙ БЛОК</small></span></a><div class="chapter">01 <span>ЖИЛОЙ БЛОК<small>Спальня, коридор и диспетчерская</small></span></div><a class="engineering-link" href="/?mode=engineering">Инженерный стенд ↗</a></header>
 <main class="game-layout"><section class="scene-panel"><div class="scene-heading"><span id="room-name" data-testid="room">ВЕРХНИЙ ЭТАЖ / СПАЛЬНЯ 01</span><span id="clock" data-testid="clock">00:00</span></div><div id="scene"></div><div class="scene-caption"><span class="live-dot"></span><span id="motion">Нажмите на свободный пол, чтобы идти</span><span id="position" data-testid="position"></span></div><div id="action-progress" hidden><span id="action-label" data-testid="action"></span><progress id="progress" max="1"></progress></div><div class="touch-pad" aria-label="Перемещение"><button data-dir="up" aria-label="Идти вверх">↑</button><button data-dir="left" aria-label="Идти влево">←</button><button data-dir="down" aria-label="Идти вниз">↓</button><button data-dir="right" aria-label="Идти вправо">→</button></div></section>
-<aside class="game-sidebar"><p class="overline">ЛИЧНЫЕ ВЕЩИ. ЧУЖАЯ ИСТОРИЯ.</p><h1 id="room-title">После смены</h1><p class="intro-text" id="room-intro">Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.</p><div class="pause-row"><span id="run-state">НА ПАУЗЕ</span><button id="pause" class="accent">Продолжить</button></div><div class="bag-controls"><button id="inventory-open">Рюкзак <kbd>I</kbd></button><button id="equipment-open">Экипировка <kbd>C</kbd></button></div><div class="light-controls"><button id="flashlight" aria-pressed="false">Фонарь · выкл <kbd>F</kbd></button><span id="light-state"></span></div><section id="door-controls" class="door-controls" aria-label="Дверь спальни"></section><label class="object-picker">Осмотреть<select id="object-picker"><option value="">Выберите предмет в комнате</option></select></label><section id="context" class="context-card"></section><p role="status" id="notice" aria-live="polite">Загрузка комнаты…</p><details class="save-panel"><summary>Экспедиция и сохранения</summary><label>Seed <input id="seed" value="bunker-bedroom-001" maxlength="200"></label><button id="new">Новая экспедиция</button><div class="two"><button id="save">Сохранить</button><button id="load">Загрузить</button></div><button id="export">Экспорт JSON ↗</button><label class="import-label">Импорт JSON ↙<input id="import" type="file" accept="application/json,.json"></label></details><p class="scope-note">Доступны спальня и верхний коридор. Прочие комнаты, лестницы, биология и опасности появятся в следующих этапах.</p></aside></main>
-<footer class="game-footer"><span>WASD / СТРЕЛКИ — ИДТИ · E — ОСМОТР · I — РЮКЗАК · C — ОДЕЖДА · F — ФОНАРЬ · ПРОБЕЛ — ПАУЗА</span><span>СБОРКА 0.4.2 · ЛОКАЛЬНОЕ СОХРАНЕНИЕ</span></footer>
+<aside class="game-sidebar"><p class="overline">ЛИЧНЫЕ ВЕЩИ. ЧУЖАЯ ИСТОРИЯ.</p><h1 id="room-title">После смены</h1><p class="intro-text" id="room-intro">Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.</p><div class="pause-row"><span id="run-state">НА ПАУЗЕ</span><button id="pause" class="accent">Продолжить</button></div><div class="bag-controls"><button id="inventory-open">Рюкзак <kbd>I</kbd></button><button id="equipment-open">Экипировка <kbd>C</kbd></button></div><div class="light-controls"><button id="flashlight" aria-pressed="false">Фонарь · выкл <kbd>F</kbd></button><span id="light-state"></span></div><section id="door-controls" class="door-controls" aria-label="Дверь спальни"></section><label class="object-picker">Осмотреть<select id="object-picker"><option value="">Выберите предмет в комнате</option></select></label><section id="context" class="context-card"></section><p role="status" id="notice" aria-live="polite">Загрузка комнаты…</p><details class="save-panel"><summary>Экспедиция и сохранения</summary><label>Seed <input id="seed" value="bunker-bedroom-001" maxlength="200"></label><button id="new">Новая экспедиция</button><div class="two"><button id="save">Сохранить</button><button id="load">Загрузить</button></div><button id="export">Экспорт JSON ↗</button><label class="import-label">Импорт JSON ↙<input id="import" type="file" accept="application/json,.json"></label></details><p class="scope-note">Доступны спальня, верхний коридор и диспетчерская с ЦБУ. Остальные комнаты, лестницы, биология и опасности появятся в следующих этапах.</p></aside></main>
+<footer class="game-footer"><span>WASD / СТРЕЛКИ — ИДТИ · E — ОСМОТР · I — РЮКЗАК · C — ОДЕЖДА · F — ФОНАРЬ · ПРОБЕЛ — ПАУЗА</span><span>СБОРКА 0.5.0 · ЛОКАЛЬНОЕ СОХРАНЕНИЕ</span></footer>
 <section id="inventory" class="game-window" role="dialog" aria-label="Обмен предметами" hidden><div class="window-top"><div><p class="overline">ОБМЕН ПРЕДМЕТАМИ</p><h2>Всё, что можно унести</h2></div><button data-close="inventory" aria-label="Закрыть рюкзак">×</button></div><div class="exchange"><section><h3 id="source-title">Рядом на полу</h3><div id="source-items"></div></section><section><h3>Рюкзак <span id="bag-count"></span></h3><div id="bag-items" class="slots"></div><h3>В руках</h3><div id="hands-item"></div></section></div><p class="window-note">10 слотов в рюкзаке · 1 предмет в руках. Открытые окна не останавливают время.</p></section>
 <section id="equipment" class="game-window equipment-window" role="dialog" aria-label="Экипировка" hidden><div class="window-top"><div><p class="overline">ЭКИПИРОВКА</p><h2>Слой за слоем</h2></div><button data-close="equipment" aria-label="Закрыть экипировку">×</button></div><p id="protection"></p><div id="clothing-items"></div><p class="window-note">Надеть / снять: 5 с. Заменить: 10 с. Старая вещь защищает до конца замены. Для замены не нужен свободный слот.</p></section>
 <section id="reader" class="game-window reader-window" role="dialog" aria-label="Чтение материала" hidden><div class="window-top"><div><p class="overline">ЛИЧНЫЙ АРХИВ</p><h2 id="reader-title"></h2></div><button data-close="reader" aria-label="Закрыть материал">×</button></div><div id="reader-body"></div><div class="reader-controls"><button id="previous">← Назад</button><span id="page-label"></span><button id="next">Далее →</button><label id="zoom-label">Масштаб <input id="zoom" type="range" min="1" max="3" step="0.1" value="1"></label></div><p class="window-note">Читать можно и на паузе. Увеличенное изображение можно перетаскивать.</p></section>`;
+root.insertAdjacentHTML("beforeend",`<section id="controller" class="game-window controller-window" role="dialog" aria-label="Панель ЦБУ" hidden><div class="window-top"><div><p class="overline">ЦЕНТРАЛЬНЫЙ БЛОК УПРАВЛЕНИЯ</p><h2>Дежурство продолжается</h2></div><button data-close="controller" aria-label="Закрыть панель ЦБУ">×</button></div><div id="controller-body"></div></section>`);
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id)! as T;
 const content = loadContent();
 let session = new Session(content, "bunker-bedroom-001", "bedroom");
@@ -35,10 +38,10 @@ function execute(command: Command) { try {
 catch (error) {
     message(error instanceof Error ? error.message : String(error), true);
 } }
-function choose(id: string) { if (root.dataset.ready !== "true") return; if(id===sceneDoor(content).id){ el("door-controls").scrollIntoView({block:"nearest"}); return; } if(id&&!observableObject(session.view(),content,id))return; selected = id; el<HTMLSelectElement>("object-picker").value = id; scene.select(id); windowKey = ""; render(); }
+function choose(id: string) { if (root.dataset.ready !== "true") return; if(sceneDoors(content).some(d=>d.id===id)){ el("door-controls").scrollIntoView({block:"nearest"}); return; } if(id&&!observableObject(session.view(),content,id))return; selected = id; el<HTMLSelectElement>("object-picker").value = id; scene.select(id); windowKey = ""; render(); }
 function button(text: string, action: () => void, disabled = false) { const b = document.createElement("button"); b.textContent = text; b.disabled = disabled; b.onclick = action; return b; }
 function accessibleSource(w: WorldState): string | null { const o = BEDROOM_OBJECTS.find(o => o.id === selected); return w.player.roomId==="u_bed1" && o && w.bedroom!.containers[o.id]?.searched && inReach(w, o.ax, o.ay, content) ? o.id : null; }
-function openWindow(id: string) { el(id).hidden = false; windowKey = ""; render(); }
+function openWindow(id: string) { if(id==="controller"&&!controllerAccessible(session.view(),content)){message("Подойдите к консоли ЦБУ ближе",true);return;} el(id).hidden = false; windowKey = ""; render(); }
 function read(id: string) { material = id; page = 0; el("reader").hidden = false; renderReader(); }
 function itemCard(item: ItemState, w: WorldState, where: "source" | "bag" | "hands" | "worn") {
     const card = document.createElement("article");
@@ -106,29 +109,33 @@ function renderWindows(w: WorldState) {
     el("protection").textContent = `Теплоизоляция: ${heat.toFixed(0)} / 100 · Химическая защита: ${chemical.toFixed(0)} / 100`;
 }
 function renderDoor(w:WorldState) {
-    const panel=el("door-controls"),door=sceneDoor(content),state=w.doors[door.id]!;
-    panel.replaceChildren();panel.hidden=!observablePoint(w,content,door);
-    if(panel.hidden)return;
-    const title=document.createElement("h3");title.textContent="ДВЕРЬ СПАЛЬНИ";panel.append(title);
-    const status=document.createElement("p");status.id="door-status";status.dataset.testid="door-status";
-    const modes={open:"Открыть",closed:"Закрыть",auto:"Авто"};
-    status.textContent=`${state.position==="open"?"Открыта":"Закрыта"} · режим «${modes[state.mode]}»`;panel.append(status);
-    const near=Math.hypot(w.player.x-door.x,w.player.y-door.y)<=content.balance.player.interaction_m;
-    const locked=session.paused||!!w.bedroom!.action;
-    const row=document.createElement("div");row.className="door-modes";
-    for(const mode of ["open","closed","auto"] as const){
-      const control=button(modes[mode],()=>execute({type:"door-mode",doorId:door.id,mode}),locked||!near);
-      control.setAttribute("aria-pressed",String(state.mode===mode));row.append(control);
+    const panel=el("door-controls");panel.replaceChildren();
+    const visible=sceneDoors(content).filter(d=>observablePoint(w,content,d));panel.hidden=!visible.length;
+    for(const door of visible){
+      const bedroom=door.rooms.includes("u_bed1"),state=w.doors[door.id]!,section=document.createElement("section");
+      section.id=bedroom?"bedroom-door-controls":"control-door-controls";
+      const title=document.createElement("h3");title.textContent=bedroom?"ДВЕРЬ СПАЛЬНИ":"ДВЕРЬ ДИСПЕТЧЕРСКОЙ";section.append(title);
+      const status=document.createElement("p");status.id=bedroom?"door-status":"control-door-status";status.dataset.testid=status.id;
+      const modes={open:"Открыть",closed:"Закрыть",auto:"Авто"};
+      status.textContent=`${state.position==="open"?"Открыта":"Закрыта"} · режим «${modes[state.mode]}»`;section.append(status);
+      const near=door.rooms.includes(w.player.roomId)&&Math.hypot(w.player.x-door.x,w.player.y-door.y)<=content.balance.player.interaction_m;
+      const locked=session.paused||!!w.bedroom!.action;
+      const row=document.createElement("div");row.className="door-modes";
+      for(const mode of ["open","closed","auto"] as const){
+        const control=button(modes[mode],()=>execute({type:"door-mode",doorId:door.id,mode}),locked||!near);
+        control.setAttribute("aria-pressed",String(state.mode===mode));row.append(control);
+      }section.append(row);
+      const current=content.rooms.find(r=>r.id===w.player.roomId)!,side=current.y+current.depth/2>door.y?1:-1;
+      if(!near)section.append(button("Подойти к двери",()=>execute({type:"walk-to",x:door.x,y:door.y+side*.5}),locked));
+      else section.append(button(w.player.roomId!=="u_corridor"?"В коридор":bedroom?"В спальню":"В диспетчерскую",()=>execute({type:"walk-to",x:door.x,y:door.y-side*.5}),locked||state.position!=="open"));
+      if(w.power.source==="none"){const note=document.createElement("p");note.textContent="Нет питания: дверь удерживается открытой пружиной.";section.append(note);}
+      panel.append(section);
     }
-    panel.append(row);
-    if(!near)panel.append(button("Подойти к двери",()=>execute({type:"walk-to",x:door.x,y:door.y+(w.player.roomId==="u_bed1"?.5:-.5)}),locked));
-    else panel.append(button(w.player.roomId==="u_bed1"?"В коридор":"В спальню",()=>execute({type:"walk-to",x:door.x,y:door.y+(w.player.roomId==="u_bed1"?-.5:.5)}),locked||state.position!=="open"));
-    if(w.power.source==="none"){const note=document.createElement("p");note.textContent="Нет питания: дверь удерживается открытой пружиной.";panel.append(note);}
 }
 function renderContext(w: WorldState) {
     const panel = el("context");
     panel.replaceChildren();
-    const o = BEDROOM_OBJECTS.find(o => o.id === selected);
+    const o = SCENE_OBJECTS.find(o => o.id === selected);
     const h = document.createElement("h2");
     h.textContent = o?.name ?? "Осмотр комнаты";
     panel.append(h);
@@ -148,6 +155,13 @@ function renderContext(w: WorldState) {
     const c = w.bedroom!.containers[o.id];
     if (c)
         panel.append(c.searched ? button("Открыть вещи", () => openWindow("inventory")) : button(`Обыскать · ${o.kind === "wardrobe" ? 10 : 5} с`, () => execute({ type: "search-container", containerId: o.id }), locked));
+    else if(o.kind==="console"){
+        const info=document.createElement("p");info.textContent=`Живая плесень: ${w.controller.infectionPercent.toFixed(1)}%`;panel.append(info);
+        panel.append(button("Открыть панель ЦБУ",()=>openWindow("controller")));
+    }
+    else if(o.kind==="archive"||o.kind==="desk"||o.kind==="chair"){
+        const info=document.createElement("p");info.textContent=o.kind==="desk"?"Раскрытая распечатка лежит рядом со сменными журналами. Дежурный сверял показания, прежде чем делать пометки.":o.kind==="archive"?"Потёртые ящики подписаны по участкам комплекса. Бумага пахнет пылью и машинным маслом.":"Продавленное кожаное кресло развёрнуто к консоли.";panel.append(info);
+    }
     else if (o.kind === "poster")
         panel.append(button("Читать плакат", () => read("poster")));
     else {
@@ -158,7 +172,7 @@ function renderContext(w: WorldState) {
 }
 function render() {
     const w = session.view(), b = w.bedroom!;
-    const visible=BEDROOM_OBJECTS.filter(o=>observableObject(w,content,o.id));
+    const visible=SCENE_OBJECTS.filter(o=>observableObject(w,content,o.id));
     const signature=visible.map(o=>o.id).join(",");
     if(signature!==visibleKey){
       visibleKey=signature;
@@ -169,10 +183,10 @@ function render() {
     }
     el<HTMLSelectElement>("object-picker").value=selected??"";
     scene.render(w);
-    const corridor=w.player.roomId==="u_corridor";
-    el("room-name").textContent=corridor?"ВЕРХНИЙ ЭТАЖ / КОРИДОР 01":"ВЕРХНИЙ ЭТАЖ / СПАЛЬНЯ 01";
-    el("room-title").textContent=corridor?"За порогом":"После смены";
-    el("room-intro").textContent=corridor?`Длинный проход тянется вдоль жилого блока. За ${w.doors[sceneDoor(content).id]!.position==="open"?"открытым проёмом":"закрытой дверью"} остаётся спальня.`:"Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.";
+    const corridor=w.player.roomId==="u_corridor",control=w.player.roomId==="u_control";
+    el("room-name").textContent=control?"ВЕРХНИЙ ЭТАЖ / ДИСПЕТЧЕРСКАЯ":corridor?"ВЕРХНИЙ ЭТАЖ / КОРИДОР 01":"ВЕРХНИЙ ЭТАЖ / СПАЛЬНЯ 01";
+    el("room-title").textContent=control?"Дежурство продолжается":corridor?"За порогом":"После смены";
+    el("room-intro").textContent=control?"Зелёные экраны всё ещё следят за пустыми помещениями. Ключевой переключатель оставлен в автоматическом режиме.":corridor?`Длинный проход тянется вдоль жилого блока. За ${w.doors[sceneDoor(content).id]!.position==="open"?"открытым проёмом":"закрытой дверью"} остаётся спальня.`:"Две застеленные кровати. Остывшая кружка. Сотрудники собирались вернуться.";
     el("flashlight").textContent=b.flashlight?"Фонарь · вкл  F":"Фонарь · выкл  F";
     el("flashlight").setAttribute("aria-pressed",String(b.flashlight));
     el<HTMLButtonElement>("flashlight").disabled=session.paused||!!b.action;
@@ -184,16 +198,17 @@ function render() {
     el("run-state").textContent = session.paused ? "НА ПАУЗЕ" : "ВРЕМЯ ИДЁТ";
     el("action-progress").hidden = !b.action;
     if (b.action) {
-        el("action-label").textContent = `${b.action.kind === "search" ? "Обыск" : b.action.kind === "wear" ? "Переодевание" : "Снятие одежды"} · осталось ${((b.action.endFrame - b.frame) / 60).toFixed(1)} с`;
+        el("action-label").textContent = `${b.action.kind === "cbu-diagnostics" ? "Самодиагностика ЦБУ" : b.action.kind === "search" ? "Обыск" : b.action.kind === "wear" ? "Переодевание" : "Снятие одежды"} · осталось ${((b.action.endFrame - b.frame) / 60).toFixed(1)} с`;
         (el("progress") as HTMLProgressElement).value = (b.frame - b.action.startFrame) / (b.action.endFrame - b.action.startFrame);
     }
     el("motion").textContent = b.action ? "Действие нельзя прервать" : session.paused ? "На паузе · читать можно" : b.path.length || b.dx || b.dy ? "Шаги по линолеуму" : "Нажмите на мебель для осмотра";
-    const key = JSON.stringify([w.player, w.items, w.doors, w.power.source, b.flashlight, visibleKey, b.containers, !!b.action, session.paused, selected, Math.round(w.player.x * 10), Math.round(w.player.y * 10)]);
+    const key = JSON.stringify([w.tick,w.controller.lastSelfTest,w.controller.powered,w.player, w.items, w.doors, w.power.source, b.flashlight, visibleKey, b.containers, !!b.action, session.paused, selected, Math.round(w.player.x * 10), Math.round(w.player.y * 10)]);
     if (key !== windowKey) {
         windowKey = key;
         renderDoor(w);
         renderContext(w);
         renderWindows(w);
+        if(!el("controller").hidden)renderControllerPanel(el("controller-body"),w,content,session.paused,()=>execute({type:"cbu-diagnostics"}));
     }
 }
 function renderReader() { const m = MATERIALS[material!]!; el("reader-title").textContent = m.title; const body = el("reader-body"); body.replaceChildren(); if (page === 0 && m.image) {
@@ -236,7 +251,7 @@ el("new").onclick = () => { try {
     session = next;
     selected = null;
     scene.select(null); scene.resetMotion();
-    for (const id of ["inventory", "equipment", "reader"])
+    for (const id of ["inventory", "equipment", "reader", "controller"])
         el(id).hidden = true;
     keys.clear();
     windowKey = "";
@@ -247,7 +262,7 @@ catch (e) {
     message(String(e), true);
 } };
 function restore(input: unknown) { const next = Session.restore(content, input); if (next.view().profile !== "bedroom")
-    throw new Error("Это сохранение инженерного стенда"); next.pause(); session = next; keys.clear(); selected = null; scene.select(null); scene.resetMotion(); el<HTMLInputElement>("seed").value = session.seed; for (const id of ["inventory", "equipment", "reader"])
+    throw new Error("Это сохранение инженерного стенда"); next.pause(); session = next; keys.clear(); selected = null; scene.select(null); scene.resetMotion(); el<HTMLInputElement>("seed").value = session.seed; for (const id of ["inventory", "equipment", "reader", "controller"])
     el(id).hidden = true; windowKey = ""; render(); message("Снимок загружен на паузе"); }
 el("save").onclick = async () => { try {
     await saveCheckpoint(session.snapshot(), "bedroom");
@@ -286,7 +301,7 @@ else if (e.code === "KeyI")
 else if (e.code === "KeyC")
     el("equipment").hidden ? openWindow("equipment") : el("equipment").hidden = true;
 else if (e.code === "Escape") {
-    for (const id of ["reader", "equipment", "inventory"])
+    for (const id of ["controller", "reader", "equipment", "inventory"])
         if (!el(id).hidden) {
             el(id).hidden = true;
             break;
@@ -294,7 +309,7 @@ else if (e.code === "Escape") {
 }
 else if (e.code === "KeyF") { e.preventDefault(); execute({type:"flashlight",enabled:!session.view().bedroom!.flashlight}); }
 else if (e.code === "KeyE") {
-    const w = session.view(), near = BEDROOM_OBJECTS.filter(o => inReach(w, o.ax, o.ay, content)).sort((a, b) => Math.hypot(w.player.x - a.ax, w.player.y - a.ay) - Math.hypot(w.player.x - b.ax, w.player.y - b.ay))[0];
+    const w = session.view(), near = SCENE_OBJECTS.filter(o => observableObject(w,content,o.id)&&inReach(w, o.ax, o.ay, content)).sort((a, b) => Math.hypot(w.player.x - a.ax, w.player.y - a.ay) - Math.hypot(w.player.x - b.ax, w.player.y - b.ay))[0];
     if (near)
         choose(near.id);
     else

@@ -63,7 +63,7 @@ export const worldSchema = z.strictObject({
     flashlight: z.boolean(),
     frame: tick, path: z.array(z.strictObject({x:value,y:value})), dx:value, dy:value, facingX:value, facingY:value,
     turnTarget:z.strictObject({x:value,y:value}).nullable(),
-    action:z.strictObject({kind:z.enum(["search","wear","remove"]),targetId:text,endFrame:tick,startFrame:tick,slot:slotSchema.nullable(),backpackSlot:tick.max(9).nullable(),toFloor:z.boolean()}).nullable(),
+    action:z.strictObject({kind:z.enum(["search","wear","remove","cbu-diagnostics"]),targetId:text,endFrame:tick,startFrame:tick,slot:slotSchema.nullable(),backpackSlot:tick.max(9).nullable(),toFloor:z.boolean()}).nullable(),
     containers:record(z.strictObject({id:text,searched:z.boolean(),capacity:tick.positive()})),
     traits:record(z.strictObject({warmth:value.nonnegative(),chemical:value.nonnegative(),maxDurability:value.nonnegative().nullable(),materialId:text.nullable()})),
   }).nullable(),
