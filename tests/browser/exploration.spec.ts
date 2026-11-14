@@ -9,7 +9,7 @@ test("door blocks the player and hides the bedroom, round trip survives reload",
   test.setTimeout(75000);
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto("/");await expect(page.locator("#app")).toHaveAttribute("data-ready","true");
-  const canvas=page.locator("#scene canvas"),controls=page.locator("#door-controls");
+  const canvas=page.locator("#scene canvas"),controls=page.locator("#bedroom-door-controls");
   await page.getByRole("button",{name:"Продолжить",exact:true}).click();
   await controls.getByRole("button",{name:"Закрыть",exact:true}).click();
   await expect(canvas).toHaveAttribute("data-door-state","closed");

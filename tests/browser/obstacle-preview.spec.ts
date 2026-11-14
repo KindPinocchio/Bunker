@@ -7,7 +7,7 @@ test("records furniture detours and a continuous doorway round trip",async({page
   test.setTimeout(60000);
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto("/");await expect(page.locator("#app")).toHaveAttribute("data-ready","true");
-  const canvas=page.locator("#scene canvas"),controls=page.locator("#door-controls");
+  const canvas=page.locator("#scene canvas"),controls=page.locator("#bedroom-door-controls");
   await expect(page.getByTestId("position")).toHaveText("4.00 / 2.50");
   // Observe the actual rendered session throughout one take. No imported fixture,
   // reload, clock acceleration or state edits are used for this recording.
