@@ -106,3 +106,13 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        with:
+          name: bunker-control-preview
+          path: |
+            test-results/control-room-*/video.webm
+            test-results/control-room-arrival.png
+            test-results/controller-panel.png
+          if-no-files-found: ignore
+          retention-days: 14
