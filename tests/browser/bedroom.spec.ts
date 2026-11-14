@@ -105,11 +105,11 @@ test("character turns through eight directions, walks, and freezes on pause", as
   await page.clock.pauseAt(new Date(Date.now()+1000));
   const canvas=page.locator("#scene canvas");
   await page.keyboard.down("s");await page.keyboard.down("a");
-  await page.clock.runFor(1000);
+  await page.clock.runFor(1200);
   await page.keyboard.up("s");await page.keyboard.up("a");
   for(const [keys,facing]of [ [["d"],"e"], [["s","d"],"se"], [["s"],"s"], [["s","a"],"sw"], [["a"],"w"], [["a","w"],"nw"], [["w"],"n"], [["w","d"],"ne"] ] as const){
     for(const key of keys)await page.keyboard.down(key);
-    await page.clock.runFor(120);
+    await page.clock.runFor(facing==="e"?300:120);
     await expect(canvas).toHaveAttribute("data-facing",facing);
     await expect(canvas).toHaveAttribute("data-pose","walk");
     for(const key of keys)await page.keyboard.up(key);

@@ -4,7 +4,7 @@ import type { Content } from "../content/load";
 import { EXPLORATION_LAYOUT } from "../content/bedroom";
 import { flashlightReaches, observableObject, observablePoint, roomLight, sceneDoor, visibilityPolygon, type Point } from "../sim/exploration";
 import type { WorldState } from "../sim/state";
-import { characterFrame, WORKER_ART } from "./character-frame";
+import { characterFrame, FacingTracker, WORKER_ART } from "./character-frame";
 import { orderGroundFootprints, playerDepthFootprint, type DepthFootprint } from "./depth-order";
 import { CAMERA, project, unproject } from "./projection";
 import { boxPropGeometry } from "./prop-geometry";
@@ -21,6 +21,8 @@ export class BedroomScene {
   private previousMotionFrame = -1;
   private previousPosition: {x:number;y:number}|null = null;
   private moved = false;
+  private facingTracker=new FacingTracker();
+  private motionSeed:string|null=null;
   private props = new Map<string, Container>();
   private readonly depthProps: DepthFootprint[] = BEDROOM_OBJECTS.filter(o=>o.kind!=="poster").map(o=>({id:o.id,x:o.x,y:o.y,width:o.width,depth:o.depth}));
   private markers = new Graphics();
@@ -176,8 +178,11 @@ export class BedroomScene {
     this.app.canvas.dataset.originX=String(this.origin.x);this.app.canvas.dataset.originY=String(this.origin.y);this.app.canvas.dataset.sceneScale=String(this.scale);
   }
   select(id: string | null) { this.selected = id; }
+  resetMotion(){this.facingTracker.reset();this.previousMotionFrame=-1;this.previousPosition=null;this.moved=false;}
   render(world: WorldState) {
     const b = world.bedroom!, p = this.project(world.player.x, world.player.y);
+    if(this.motionSeed!==world.seed||b.frame<this.previousMotionFrame)this.resetMotion();
+    this.motionSeed=world.seed;
     this.cameraRoom=world.player.roomId;this.cameraPoint=world.player;this.resize();
     const polygon=(graphics:Graphics,points:Point[])=>{
       if(points.length<3)return;
@@ -221,13 +226,17 @@ export class BedroomScene {
       this.previousMotionFrame = b.frame; this.previousPosition = {x:world.player.x,y:world.player.y};
     }
     const moving = this.moved && !b.action && (b.path.length > 0 || b.dx !== 0 || b.dy !== 0);
-    const pose = characterFrame(b.facingX,b.facingY,moving,b.frame);
+    const pose = characterFrame(b.facingX,b.facingY,moving,b.frame,this.facingTracker.select(b.facingX,b.facingY));
     this.player.texture = this.characterTextures[pose.index]!;
     this.player.position.set(p.x, p.y);
     this.playerShadow.position.set(p.x,p.y);
     this.app.canvas.dataset.facing = pose.facing;
     this.app.canvas.dataset.pose = pose.pose;
     this.app.canvas.dataset.characterFrame = String(pose.index);
+    this.app.canvas.dataset.motionFrame=String(b.frame);
+    this.app.canvas.dataset.headingX=String(b.facingX);this.app.canvas.dataset.headingY=String(b.facingY);
+    this.app.canvas.dataset.turning=String(b.turnTarget!==null);
+    this.app.canvas.dataset.waypoints=String(b.path.length);
     const footprints: DepthFootprint[] = [...this.depthProps,playerDepthFootprint(world.player.x,world.player.y),{id:"bedroom-door",x:opening.x-EXPLORATION_LAYOUT.portalWidthM/2,y:opening.y,width:EXPLORATION_LAYOUT.portalWidthM,depth:0}];
     this.markers.clear(); this.markers.visible = this.selected !== null && (this.selected===opening.id?this.door.visible:observableObject(world,this.content,this.selected));
     if (this.selected && this.markers.visible) {

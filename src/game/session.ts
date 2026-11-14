@@ -3,7 +3,8 @@ import { advanceBedroomFrame, applyPlayerCommand, finishBedroomAction, MOTION_HZ
 import { applyDeveloperCommand, stepWorld } from "../sim/engine";
 import { commandSchema, snapshotSchema, SCHEMA_VERSION, type ClockState, type Command, type LoggedCommand, type Snapshot, type WorldState } from "../sim/state";
 import { createWorld, validateWorld } from "../sim/world";
-import { reconcileSceneDoor } from "../sim/exploration";
+import { navigation, reconcileSceneDoor } from "../sim/exploration";
+import { simplifyPath } from "../sim/motion";
 
 export class Session {
   private state: WorldState;
@@ -51,9 +52,21 @@ export class Session {
 
   static restore(content: Content, input: unknown): Session {
     try {
+      const legacy=typeof input==="object"&&input!==null&&"schemaVersion" in input&&input.schemaVersion===4;
+      if(legacy){
+        const next=structuredClone(input) as Record<string,any>;
+        if(next.world?.schemaVersion!==4)throw new Error("Несогласованная версия снимка");
+        next.schemaVersion=SCHEMA_VERSION;next.world.schemaVersion=SCHEMA_VERSION;
+        if(next.world.bedroom){
+          if("turnTarget" in next.world.bedroom)throw new Error("Смешанные версии движения");
+          next.world.bedroom.turnTarget=null;
+        }
+        input=next;
+      }
       if (typeof input === "object" && input !== null && "schemaVersion" in input && input.schemaVersion !== SCHEMA_VERSION) throw new Error(`Версия схемы ${String(input.schemaVersion)} не поддерживается; требуется ${SCHEMA_VERSION}`);
       const snapshot = snapshotSchema.parse(input);
       validateWorld(snapshot.world, content);
+      if(legacy&&snapshot.world.bedroom)snapshot.world.bedroom.path=simplifyPath(snapshot.world.player,snapshot.world.bedroom.path,navigation(snapshot.world,content).segment);
       for (const [index, entry] of snapshot.commands.entries()) {
         if (entry.sequence !== index + 1 || entry.tick > snapshot.world.tick || entry.frame > (snapshot.world.bedroom?.frame ?? snapshot.world.tick * MOTION_HZ) || Math.floor(entry.frame / MOTION_HZ) !== entry.tick || entry.scope !== (snapshot.world.profile === "bedroom" ? "player" : "developer") || (index > 0 && entry.frame < snapshot.commands[index - 1]!.frame) || (index > 0 && entry.tick < snapshot.commands[index - 1]!.tick)) throw new Error("Нарушен порядок журнала команд");
       }

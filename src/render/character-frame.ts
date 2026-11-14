@@ -5,13 +5,25 @@ export const WORKER_ART = {
   pivot: [128, 180] as const, scale: 0.87,
 };
 export const FACING_NAMES = ["se", "s", "sw", "w", "nw", "n", "ne", "e"] as const;
+const SECTOR=Math.PI/4;
+export class FacingTracker {
+  private sector:number|null=null;
+  reset(){this.sector=null;}
+  select(x:number,y:number):number {
+    const angle=Math.atan2((x+y)*CAMERA.floorY/CAMERA.x,x-y);
+    const delta=this.sector===null?Infinity:Math.abs(Math.atan2(Math.sin(angle-this.sector*SECTOR),Math.cos(angle-this.sector*SECTOR)));
+    // A 6° band prevents adjacent sprites flickering at the 22.5° sector boundary.
+    if(this.sector===null||delta>SECTOR/2+6*Math.PI/180)this.sector=Math.round(angle/SECTOR);
+    return ((this.sector+7)%8+8)%8;
+  }
+}
 
 /** Facing follows the actual room projection, without mirrored lighting. */
-export function characterFrame(facingX: number, facingY: number, moving: boolean, logicalFrame: number) {
+export function characterFrame(facingX: number, facingY: number, moving: boolean, logicalFrame: number, rowOverride?:number) {
   if (![facingX, facingY, logicalFrame].every(Number.isFinite) || logicalFrame < 0) throw new Error("Invalid character pose");
   const screenX = facingX - facingY, screenY = (facingX + facingY) * CAMERA.floorY / CAMERA.x;
   const sector = Math.round(Math.atan2(screenY, screenX) / (Math.PI / 4));
-  const row = ((sector + 7) % 8 + 8) % 8;
+  const row = rowOverride??((sector + 7) % 8 + 8) % 8;
   const cycle = [1, 2, 3, 2] as const;
   const column = moving ? cycle[Math.floor(logicalFrame * 8 / 60) % cycle.length]! : 0;
   return { row, column, index: row * WORKER_ART.columns + column, facing: FACING_NAMES[row]!, pose: moving ? "walk" : "idle" };

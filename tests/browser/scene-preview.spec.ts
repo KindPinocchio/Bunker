@@ -1,4 +1,5 @@
 import {expect,test} from "@playwright/test";
+import { clickFloor,prepareCorridor } from "./motion-helpers";
 
 test.use({video:{mode:"on",size:{width:1280,height:900}}});
 
@@ -43,4 +44,14 @@ test("walks to furniture with matching approach positions",async({page})=>{
   expect(depth.nearBedBehind).toBeGreaterThan(0);
   expect(depth.violations).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+test("records a steady oblique walk and a gradual turn back",async({page})=>{
+  test.setTimeout(45000);await prepareCorridor(page);
+  await page.getByRole("button",{name:"Продолжить",exact:true}).click();
+  await clickFloor(page,10.5,1.25);await expect(page.getByTestId("position")).toHaveText("10.50 / 1.25",{timeout:8000});
+  await page.screenshot({path:"test-results/motion-straight.png",fullPage:true});
+  await clickFloor(page,8,1);await expect(page.getByTestId("position")).toHaveText("8.00 / 1.00",{timeout:8000});
+  await page.getByRole("button",{name:"Пауза",exact:true}).click();
+  await page.screenshot({path:"test-results/motion-return.png",fullPage:true});
 });

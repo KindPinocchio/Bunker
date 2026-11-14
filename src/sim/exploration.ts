@@ -32,15 +32,47 @@ export function sceneWalls(world: WorldState, content: Content): Wall[] {
   return walls;
 }
 const distanceToWall = (p: Point, w: Wall) => {
-  const dx=w.b.x-w.a.x,dy=w.b.y-w.a.y,t=Math.max(0,Math.min(1,((p.x-w.a.x)*dx+(p.y-w.a.y)*dy)/(dx*dx+dy*dy)));
+  const dx=w.b.x-w.a.x,dy=w.b.y-w.a.y;
+  if(dx===0&&dy===0)return Math.hypot(p.x-w.a.x,p.y-w.a.y);
+  const t=Math.max(0,Math.min(1,((p.x-w.a.x)*dx+(p.y-w.a.y)*dy)/(dx*dx+dy*dy)));
   return Math.hypot(p.x-w.a.x-t*dx,p.y-w.a.y-t*dy);
 };
-export function navigation(world: WorldState, content: Content) {
-  const walls=sceneWalls(world,content),r=PLAYER_RADIUS_M;
-  return (x:number,y:number) => Number.isFinite(x) && Number.isFinite(y) && !!roomAt({x,y},content) &&
+function segmentDistance(a:Wall,b:Wall):number {
+  const dx=a.b.x-a.a.x,dy=a.b.y-a.a.y,sx=b.b.x-b.a.x,sy=b.b.y-b.a.y,denom=dx*sy-dy*sx;
+  if(Math.abs(denom)>1e-12){
+    const qx=b.a.x-a.a.x,qy=b.a.y-a.a.y,t=(qx*sy-qy*sx)/denom,u=(qx*dy-qy*dx)/denom;
+    if(t>=0&&t<=1&&u>=0&&u<=1)return 0;
+  }
+  return Math.min(distanceToWall(a.a,b),distanceToWall(a.b,b),distanceToWall(b.a,a),distanceToWall(b.b,a));
+}
+function crossesFurniture(a:Point,b:Point,o:typeof BEDROOM_OBJECTS[number]):boolean {
+  if(o.width===0)return false;
+  let enter=0,exit=1;
+  for(const [p,d,low,high] of [[a.x,b.x-a.x,o.x-PLAYER_RADIUS_M,o.x+o.width+PLAYER_RADIUS_M],[a.y,b.y-a.y,o.y-PLAYER_RADIUS_M,o.y+o.depth+PLAYER_RADIUS_M]]){
+    if(d===0){if(p!<=low!||p!>=high!)return false;continue;}
+    const t0=(low!-p!)/d!,t1=(high!-p!)/d!;
+    enter=Math.max(enter,Math.min(t0,t1));exit=Math.min(exit,Math.max(t0,t1));
+    if(enter>=exit)return false;
+  }
+  return enter<exit;
+}
+export type Navigation=((x:number,y:number)=>boolean)&{segment:(a:Point,b:Point)=>boolean};
+function navigationWithWalls(walls:Wall[],contains:(p:Point)=>boolean):Navigation {
+  const r=PLAYER_RADIUS_M;
+  const point=(x:number,y:number) => Number.isFinite(x) && Number.isFinite(y) && contains({x,y}) &&
     walls.every(w=>distanceToWall({x,y},w)>=r-EPS) &&
     !BEDROOM_OBJECTS.some(o=>o.width>0&&x>o.x-r&&x<o.x+o.width+r&&y>o.y-r&&y<o.y+o.depth+r);
+  return Object.assign(point,{segment:(a:Point,b:Point)=>point(a.x,a.y)&&point(b.x,b.y)&&
+    walls.every(w=>segmentDistance({a,b},w)>=r-EPS)&&!BEDROOM_OBJECTS.some(o=>crossesFurniture(a,b,o))});
 }
+export function navigation(world: WorldState, content: Content):Navigation {
+  return navigationWithWalls(sceneWalls(world,content),p=>!!roomAt(p,content));
+}
+/** Legacy single-bedroom helpers use the same swept collision rules. */
+export const bedroomNavigation=navigationWithWalls([
+  {a:{x:2,y:2},b:{x:6,y:2}},{a:{x:2,y:6},b:{x:6,y:6}},
+  {a:{x:2,y:2},b:{x:2,y:6}},{a:{x:6,y:2},b:{x:6,y:6}},
+],p=>p.x>=2&&p.x<=6&&p.y>=2&&p.y<=6);
 /** Distance along a unit ray; collinear wall rays are handled by endpoint rays on either side. */
 export function rayDistance(origin: Point, dx:number,dy:number,walls:readonly Wall[],limit:number):number {
   let distance=limit;

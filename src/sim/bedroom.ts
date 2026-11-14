@@ -1,23 +1,23 @@
 import type { Content } from "../content/load.ts";
 import { BEDROOM_OBJECTS, MATERIALS } from "../content/bedroom.ts";
 import type { Command, ItemState, WorldState } from "./state.ts";
-import { PLAYER_RADIUS_M } from "./constants.ts";
 import { Pcg32 } from "./pcg32.ts";
-import { navigation, observableObject, observablePoint, reconcileSceneDoor, roomAt, sceneDoor } from "./exploration.ts";
+import { bedroomNavigation, navigation, observableObject, observablePoint, reconcileSceneDoor, roomAt, sceneDoor } from "./exploration.ts";
 import { applyDeveloperCommand } from "./engine.ts";
+import { simplifyPath, TURN_DEGREES_PER_SECOND, turnToward } from "./motion.ts";
 export const MOTION_HZ = 60;
 export function walkable(x: number, y: number, world?: WorldState, content?: Content): boolean {
     if (world && content) return navigation(world, content)(x, y);
-    const r = PLAYER_RADIUS_M;
-    return x >= 2 + r && x <= 6 - r && y >= 2 + r && y <= 6 - r && !BEDROOM_OBJECTS.some(o => o.width > 0 && x > o.x - r && x < o.x + o.width + r && y > o.y - r && y < o.y + o.depth + r);
+    return bedroomNavigation(x,y);
 }
 export function pathTo(x: number, y: number, tx: number, ty: number, world?: WorldState, content?: Content): {
     x: number;
     y: number;
 }[] {
-    const canWalk = world && content ? navigation(world, content) : walkable;
+    const canWalk = world && content ? navigation(world, content) : bedroomNavigation;
     if (!canWalk(tx, ty))
         throw new Error("Здесь нельзя пройти");
+    if(canWalk.segment({x,y},{x:tx,y:ty}))return Math.hypot(tx-x,ty-y)<1e-10?[]:[{x:tx,y:ty}];
     const size = 0.1, key = (x: number, y: number) => `${x},${y}`;
     const start = { x: Math.round(x / size), y: Math.round(y / size) }, target = { x: Math.round(tx / size), y: Math.round(ty / size) };
     const open = [start], cost = new Map([[key(start.x, start.y), 0]]), parent = new Map<string, string>();
@@ -32,7 +32,7 @@ export function pathTo(x: number, y: number, tx: number, ty: number, world?: Wor
                 result.unshift({ x: px! * size, y: py! * size });
                 at = parent.get(at)!;
             }
-            return result;
+            return simplifyPath({x,y},result,canWalk.segment);
         }
         for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
             const nx = node.x + dx!, ny = node.y + dy!, next = key(nx, ny), candidate = cost.get(k)! + Math.hypot(dx!, dy!);
@@ -62,7 +62,7 @@ export function initializeBedroom(world: WorldState, content: Content): void {
     world.player.roomId = "u_bed1";
     world.player.x = 4;
     world.player.y = 2.5;
-    world.bedroom = { flashlight: false, frame: 0, path: [], dx: 0, dy: 0, facingX: 0, facingY: 1, action: null, containers: {}, traits: {} };
+    world.bedroom = { flashlight: false, frame: 0, path: [], dx: 0, dy: 0, facingX: 0, facingY: 1, turnTarget:null, action: null, containers: {}, traits: {} };
     const b = world.bedroom;
     for (const o of BEDROOM_OBJECTS)
         if (o.kind === "nightstand" || o.kind === "wardrobe")
@@ -249,8 +249,7 @@ export function advanceBedroomFrame(world: WorldState, content: Content): WorldS
     }
     else {
         const length = Math.hypot(dx, dy);
-        if (!length)
-            return world;
+        if (!length){advanceFacing(world);return world;}
         const mx = dx / length * remaining, my = dy / length * remaining;
         if (canWalk(world.player.x + mx, world.player.y + my)) {
             world.player.x += mx;
@@ -278,12 +277,15 @@ export function advanceBedroomFrame(world: WorldState, content: Content): WorldS
                 }
             }
         }
-    const length = Math.hypot(dx, dy);
-    if (length) {
-        b.facingX = dx / length;
-        b.facingY = dy / length;
-    }
+    if(distance>1e-10)b.turnTarget={x:(world.player.x-oldX)/distance,y:(world.player.y-oldY)/distance};
+    advanceFacing(world);
     return world;
+}
+function advanceFacing(world:WorldState):void {
+    const b=world.bedroom!;if(!b.turnTarget)return;
+    const next=turnToward({x:b.facingX,y:b.facingY},b.turnTarget,TURN_DEGREES_PER_SECOND*Math.PI/180/MOTION_HZ);
+    b.facingX=next.x;b.facingY=next.y;
+    if(Math.hypot(next.x-b.turnTarget.x,next.y-b.turnTarget.y)<1e-10)b.turnTarget=null;
 }
 export function finishBedroomAction(world: WorldState): void {
     const b = world.bedroom!, a = b.action;
@@ -327,8 +329,10 @@ export function validateBedroom(world: WorldState, content: Content): void {
     const canWalk = navigation(world,content);
     if (!b || Math.floor(b.frame / MOTION_HZ) !== world.tick || !canWalk(world.player.x, world.player.y))
         throw new Error("Неверное время или положение игрока");
-    if (b.path.some(p => !canWalk(p.x, p.y)))
+    if (b.path.some((p,i) => !canWalk.segment(i?b.path[i-1]!:world.player,p)))
         throw new Error("Путь проходит через препятствие");
+    if(Math.abs(Math.hypot(b.facingX,b.facingY)-1)>1e-8||(b.turnTarget&&Math.abs(Math.hypot(b.turnTarget.x,b.turnTarget.y)-1)>1e-8))
+        throw new Error("Неверный вектор поворота");
     if (![-1, 0, 1].includes(b.dx) || ![-1, 0, 1].includes(b.dy))
         throw new Error("Неверное направление движения");
     if (b.action && (b.action.endFrame <= b.frame || b.action.startFrame > b.frame))
