@@ -5,6 +5,8 @@ import { Pcg32 } from "./pcg32.ts";
 import { bedroomNavigation, navigation, observableObject, observablePoint, reconcileSceneDoor, roomAt, sceneDoors, controllerAccessible,controllerReachable } from "./exploration.ts";
 import { applyDeveloperCommand } from "./engine.ts";
 import { simplifyPath, TURN_DEGREES_PER_SECOND, turnToward } from "./motion.ts";
+import {createHardwareState} from "../content/hardware.ts";
+import {applyHardwareCommand,finishHardwareAction,isHardwareAction,validateHardwareAction,validateHardwareState} from "./hardware.ts";
 export const MOTION_HZ = 60;
 export function walkable(x: number, y: number, world?: WorldState, content?: Content): boolean {
     if (world && content) return navigation(world, content)(x, y);
@@ -58,7 +60,7 @@ export function initializeBedroom(world: WorldState, content: Content): void {
     world.player.roomId = "u_bed1";
     world.player.x = 4;
     world.player.y = 2.5;
-    world.bedroom = { flashlight: false, frame: 0, path: [], dx: 0, dy: 0, facingX: 0, facingY: 1, turnTarget:null, action: null, containers: {}, traits: {} };
+    world.bedroom = { flashlight: false, frame: 0, path: [], dx: 0, dy: 0, facingX: 0, facingY: 1, turnTarget:null, action: null, containers: {}, traits: {},hardware:createHardwareState() };
     const b = world.bedroom;
     for (const o of BEDROOM_OBJECTS)
         if (o.kind === "nightstand" || o.kind === "wardrobe")
@@ -124,11 +126,12 @@ export function applyPlayerCommand(world: WorldState, command: Command, content:
         throw new Error("Игровая сцена не создана");
     if (b.action || next.player.action)
         throw new Error("Дождитесь окончания действия");
+    if(applyHardwareCommand(next,command,content))return next;
     const begin = (kind: "search" | "wear" | "remove" | "cbu-diagnostics", targetId: string, seconds: number, slot: keyof WorldState["player"]["clothing"] | null = null, backpackSlot: number | null = null, toFloor = false) => {
         b.path = [];
         b.dx = 0;
         b.dy = 0;
-        b.action = { kind, targetId, startFrame: b.frame, endFrame: b.frame + seconds * MOTION_HZ, slot, backpackSlot, toFloor };
+        b.action = { kind, targetId, startFrame: b.frame, endFrame: b.frame + seconds * MOTION_HZ, slot, backpackSlot, toFloor,equipmentItemId:null };
     };
     if (command.type === "walk-to") {
         const path = pathTo(next.player.x, next.player.y, command.x, command.y, next, content);
@@ -289,10 +292,11 @@ function advanceFacing(world:WorldState):void {
     b.facingX=next.x;b.facingY=next.y;
     if(Math.hypot(next.x-b.turnTarget.x,next.y-b.turnTarget.y)<1e-10)b.turnTarget=null;
 }
-export function finishBedroomAction(world: WorldState): void {
+export function finishBedroomAction(world: WorldState,content:Content): void {
     const b = world.bedroom!, a = b.action;
     if (!a || a.endFrame > b.frame)
         return;
+    if(finishHardwareAction(world,content)){b.action=null;return;}
     if (a.kind === "search")
         b.containers[a.targetId]!.searched = true;
     else if(a.kind==="cbu-diagnostics"){
@@ -344,11 +348,14 @@ export function validateBedroom(world: WorldState, content: Content): void {
     if (b.action && (b.action.endFrame <= b.frame || b.action.startFrame > b.frame))
         throw new Error("Некорректный таймер спальни");
     const a = b.action;
+    validateHardwareState(world,content);
     if (a) {
         if (b.path.length || b.dx || b.dy)
             throw new Error("Движение во время действия");
         const item = world.items[a.targetId];
         let duration = 0;
+        if(isHardwareAction(a)){validateHardwareAction(world,content,a);}else{
+        if(a.equipmentItemId!==null)throw new Error("Лишний резерв инженерной детали");
         if (a.kind === "search") {
             const o = BEDROOM_OBJECTS.find(o => o.id === a.targetId);
             if (!o || !b.containers[o.id] || b.containers[o.id]!.searched || !inReach(world, o.ax, o.ay, content) || a.slot !== null || a.backpackSlot !== null || a.toFloor)
@@ -372,6 +379,7 @@ export function validateBedroom(world: WorldState, content: Content): void {
         }
         if (a.endFrame - a.startFrame !== duration * MOTION_HZ)
             throw new Error("Неверная длительность действия");
+        }
     }
     const expected = BEDROOM_OBJECTS.filter(o => o.kind === "nightstand" || o.kind === "wardrobe").map(o => o.id).sort();
     if (JSON.stringify(Object.keys(b.containers).sort()) !== JSON.stringify(expected))

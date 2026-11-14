@@ -12,6 +12,8 @@ import { SCENE_OBJECTS, PLAYABLE_ROOMS } from "../content/scene";
 import { CONTROL_ATLAS,controlPropGeometry } from "./control-art";
 import { sceneDoors } from "../sim/exploration";
 import type { DoorDefinition } from "../content/load";
+import {HARDWARE_ATLAS,makeHardwareArt} from "./hardware-art";
+import {HARDWARE_OBJECTS} from "../content/hardware";
 
 /** Raster assets use authored ground pivots; simulation geometry remains in metres. */
 export class BedroomScene {
@@ -27,6 +29,7 @@ export class BedroomScene {
   private facingTracker=new FacingTracker();
   private motionSeed:string|null=null;
   private props = new Map<string, Container>();
+  private hardwareViews:ReturnType<typeof makeHardwareArt>[]=[];
   private readonly depthProps: DepthFootprint[] = SCENE_OBJECTS.filter(o=>o.kind!=="poster").map(o=>({id:o.id,x:o.x,y:o.y,width:o.width,depth:o.depth}));
   private markers = new Graphics();
   private consoleScreensOff=new Graphics();
@@ -133,12 +136,16 @@ export class BedroomScene {
     this.doors.push({definition,prop,leaf,label});
     }
     const controlAtlas:Texture=await Assets.load(CONTROL_ATLAS);
+    const hardwareAtlas:Texture=await Assets.load(HARDWARE_ATLAS);
+    if(hardwareAtlas.width!==1536||hardwareAtlas.height!==1024)throw new Error("Неверный размер атласа оборудования");
     if(controlAtlas.width!==1536||controlAtlas.height!==1024)throw new Error("Неверный размер атласа диспетчерской");
     for(const o of SCENE_OBJECTS){
       if(o.kind==="poster")continue;
       const p=this.project(o.x,o.y);
       let prop:Container;
-      if(o.kind==="bed"){
+      if(o.kind==="hardware"){
+        const view=makeHardwareArt(hardwareAtlas,HARDWARE_OBJECTS.find(h=>h.id===o.id)!,content);view.root.position.set(p.x,p.y);prop=view.root;this.hardwareViews.push(view);
+      }else if(o.kind==="bed"){
         const art=BEDROOM_ART.bed,sprite=new Sprite(frame(art.column,art.row));
         const a=(o.width+o.depth)*CAMERA.x/art.footprintWidth;
         const sx=art.groundX[1]!/art.groundX[0]!,sy=art.groundY[1]!/art.groundY[0]!;
@@ -273,9 +280,11 @@ export class BedroomScene {
     for (const [id,sprite] of this.props){
       sprite.visible=observableObject(world,this.content,id);
       const object=SCENE_OBJECTS.find(o=>o.id===id)!;
-      sprite.tint=tint(id===this.selected?0xffedc5:0xffffff,Math.max(roomLight(world,this.content,object.roomId),flashlightReaches(world,this.content,{x:object.ax,y:object.ay})?.9:0));
+      const lightPoint=object.kind==="hardware"?object:{x:object.ax,y:object.ay};
+      sprite.tint=tint(id===this.selected?0xffedc5:0xffffff,Math.max(roomLight(world,this.content,object.roomId),flashlightReaches(world,this.content,lightPoint)?.9:0));
     }
     this.consoleScreensOff.visible=!world.controller.powered||world.controller.damagePercent>=100;
+    for(const view of this.hardwareViews)view.update(world);
     for (const [index,id] of orderGroundFootprints(footprints).entries()) {
       const layer=index*4;
       if(id==="player"){this.playerShadow.zIndex=layer;this.player.zIndex=layer+1;}

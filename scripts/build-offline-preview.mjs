@@ -11,10 +11,12 @@ for (const name of ['raster/bedroom-atlas-v1.png','raster/bedroom-atlas-high-v1.
 }
 const control=await readFile(path.join(root,'public/assets/control/control-surfaces-v1.png'));
 assets['/assets/control/control-surfaces-v1.png']=`data:image/png;base64,${control.toString('base64')}`;
+const hardware=await readFile(path.join(root,'public/assets/hardware/hardware-surfaces-v1.png'));
+assets['/assets/hardware/hardware-surfaces-v1.png']=`data:image/png;base64,${hardware.toString('base64')}`;
 const result=await build({entryPoints:['src/game/bedroom-ui.ts'],bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,write:false,outdir:'.cache/offline',plugins:[{
  name:'inline-preview-assets',setup(b){b.onLoad({filter:/bedroom-(scene|ui)\.ts$/},async args=>{
   let code=await readFile(args.path,'utf8');
-  if(args.path.endsWith('bedroom-scene.ts'))code=code.replace('Assets.load(BEDROOM_ART.atlas)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[BEDROOM_ART.atlas])').replace('Assets.load(BEDROOM_ART.materialAtlas)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[BEDROOM_ART.materialAtlas])').replace('Assets.load(CONTROL_ATLAS)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[CONTROL_ATLAS])').replace('Assets.load(person.atlas)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[person.atlas])').replace('Assets.load("/assets/bedroom/poster.svg")','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS["/assets/bedroom/poster.svg"])');
+  if(args.path.endsWith('bedroom-scene.ts'))code=code.replace('Assets.load(BEDROOM_ART.atlas)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[BEDROOM_ART.atlas])').replace('Assets.load(BEDROOM_ART.materialAtlas)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[BEDROOM_ART.materialAtlas])').replace('Assets.load(HARDWARE_ATLAS)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[HARDWARE_ATLAS])').replace('Assets.load(CONTROL_ATLAS)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[CONTROL_ATLAS])').replace('Assets.load(person.atlas)','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS[person.atlas])').replace('Assets.load("/assets/bedroom/poster.svg")','Assets.load(globalThis.__BUNKER_PREVIEW_ASSETS["/assets/bedroom/poster.svg"])');
   else code=code.replace('img.src = m.image;','img.src = globalThis.__BUNKER_PREVIEW_ASSETS[m.image] ?? m.image;');
   return {contents:code,loader:'ts',resolveDir:path.dirname(args.path)};
  });}

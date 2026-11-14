@@ -86,6 +86,16 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ always() && steps.build.outcome == 'success' }}
         with:
+          name: bunker-hardware-preview
+          path: |
+            test-results/hardware-*/video.webm
+            test-results/hardware-dark.png
+            test-results/hardware-restored.png
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        with:
           name: bunker-dist
           path: dist/
           if-no-files-found: error

@@ -5,6 +5,7 @@ import { canonicalStringify, fingerprint } from "../../src/sim/canonical.ts";
 import { createWorld } from "../../src/sim/world.ts";
 import { BEDROOM_CONTENT } from "../../src/content/bedroom.ts";
 
+import {HARDWARE_CONTENT} from "../../src/content/hardware.ts";
 import { SCENE_CONTENT } from "../../src/content/scene.ts";
 
 const read = (path) => JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8"));
@@ -22,7 +23,7 @@ export function fixtureContent() {
       ...raw.layout.doors.map((d) => ({ ...d, id: `door:${[...d.rooms].sort().join(":")}`, kind: "horizontal", label: d.rooms.join(" / "), initialMode: "auto", initialPosition: "open" })),
       ...raw.layout.stairs.map((d) => ({ ...d, id: `stair:${d.id}`, kind: "stair", label: d.label, initialMode: "auto", initialPosition: "open" })),
     ]),
-    legacyFingerprint:fingerprint(canonicalStringify({data:raw,bedroom:BEDROOM_CONTENT})), fingerprint: fingerprint(canonicalStringify({data:raw,bedroom:BEDROOM_CONTENT,scene:SCENE_CONTENT})), sourceVersions: { balance: "1.1", layout: "1.0", engineering: "1.0", catalog: "1.0", dressing: "1.0", bedroom:BEDROOM_CONTENT.version },
+    legacyFingerprint:fingerprint(canonicalStringify({data:raw,bedroom:BEDROOM_CONTENT})), previousFingerprint:fingerprint(canonicalStringify({data:raw,bedroom:BEDROOM_CONTENT,scene:SCENE_CONTENT})), fingerprint: fingerprint(canonicalStringify({data:raw,bedroom:BEDROOM_CONTENT,scene:SCENE_CONTENT,hardware:HARDWARE_CONTENT})), sourceVersions: { balance: "1.1", layout: "1.0", engineering: "1.0", catalog: "1.0", dressing: "1.0", bedroom:BEDROOM_CONTENT.version,scene:SCENE_CONTENT.version,hardware:HARDWARE_CONTENT.version },
   };
 }
 export function fixture(seed = "engineering-20261112") {

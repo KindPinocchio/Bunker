@@ -88,7 +88,7 @@ test("mid-route save, flashlight and door mode replay with identical frames and 
 });
 test("room IDs cannot be forged and old snapshot schemas are rejected explicitly",()=>{
   const snap=game().snapshot();snap.world.player.roomId="u_corridor";expect(()=>Session.restore(content,snap)).toThrow("Игрок");
-  expect(()=>Session.restore(content,{...game().snapshot(),schemaVersion:3})).toThrow("требуется 6");
+  expect(()=>Session.restore(content,{...game().snapshot(),schemaVersion:3})).toThrow("требуется 7");
 });
 test("new door volume preserves the bed ordering across the two-room walkable area",()=>{
   const w=game().view(),canWalk=navigation(w,content),props=BEDROOM_OBJECTS.filter(o=>o.width>0);

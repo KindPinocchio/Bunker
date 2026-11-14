@@ -80,9 +80,9 @@ test("the panel uses sensor signals and keeps its last diagnostic instead of liv
 });
 test("schema 5 imports retain an unfinished turn without changing ownership or RNG",()=>{
   const s=new Session(content,"old-five","bedroom");s.resume();s.dispatch({type:"move-input",dx:1,dy:0});s.advance(50);s.pause();
-  const old=structuredClone(s.snapshot()) as any;old.schemaVersion=5;old.world.schemaVersion=5;old.world.contentFingerprint=content.legacyFingerprint;
+  const old=structuredClone(s.snapshot()) as any;old.schemaVersion=5;old.world.schemaVersion=5;old.world.contentFingerprint=content.legacyFingerprint;delete old.world.bedroom.hardware;
   const input=structuredClone(old),next=Session.restore(content,old).snapshot();expect(old).toEqual(input);
-  expect(next.schemaVersion).toBe(6);expect(next.world.bedroom).toEqual(old.world.bedroom);expect(next.world.rng).toEqual(old.world.rng);expect(next.world.items).toEqual(old.world.items);expect(next.world.player).toEqual(old.world.player);
+  expect(next.schemaVersion).toBe(7);expect({...next.world.bedroom,hardware:undefined}).toEqual({...old.world.bedroom,hardware:undefined});expect(next.world.rng).toEqual(old.world.rng);expect(next.world.items).toEqual(old.world.items);expect(next.world.player).toEqual(old.world.player);
 });
 test("legacy migration rejects foreign content and mixed versions",()=>{
   const old=structuredClone(atConsole().snapshot()) as any;old.schemaVersion=5;old.world.schemaVersion=5;old.world.contentFingerprint="0000000000000000";

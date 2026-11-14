@@ -1,0 +1,21 @@
+{
+  "file": "hardware-surfaces-v1.png",
+  "generated_on": "2026-11-14",
+  "dimensions": [
+    1536,
+    1024
+  ],
+  "cell": 512,
+  "columns": 3,
+  "rows": 2,
+  "sha256": "75e98edea72e627c0afd07edc6eb1da5edab6d58384e298f372864d0cff7d017",
+  "method": "OpenAI image generation, original raster surfaces with the existing control-room atlas as material reference; no extracted third-party game assets.",
+  "surfaces": [
+    "closed cabinet",
+    "empty cabinet backplate",
+    "sensor",
+    "relay",
+    "steel",
+    "red enamel"
+  ]
+}

@@ -16,3 +16,7 @@ button.accent:hover:enabled{background:#dccd92;border-color:#e5d9a4;color:#1d2a2
 .controller-window summary { cursor:pointer;color:#c7b776; }
 .controller-window li { margin:8px 0; }
 .controller-lock { border:1px solid #6d6543;padding:12px;color:#c7b776; }
+
+.hardware-window{width:min(760px,94vw)}.hardware-socket,.hardware-valve{padding:14px 0;border-top:1px solid #465741}.hardware-socket button,.hardware-valve button{margin:5px 8px 5px 0}.hardware-socket select{display:block;max-width:100%;margin:10px 0}.hardware-socket p,.hardware-valve p{font-size:12px;line-height:1.6}
+
+#inventory{z-index:11}#equipment{z-index:12}#reader{z-index:14}

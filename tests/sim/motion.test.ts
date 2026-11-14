@@ -70,10 +70,10 @@ test("sector hysteresis suppresses boundary flicker and handles the angle wrap",
   expect(select(15)).toBe(7);tracker.reset();expect(select(179)).toBe(3);expect(select(-179)).toBe(3);
 });
 test("schema 4 is upgraded without changing position, inventory, time or RNG",()=>{
-  const legacy=structuredClone(corridor().snapshot()) as any;legacy.schemaVersion=4;legacy.world.schemaVersion=4;legacy.world.contentFingerprint=content.legacyFingerprint;delete legacy.world.bedroom.turnTarget;
+  const legacy=structuredClone(corridor().snapshot()) as any;legacy.schemaVersion=4;legacy.world.schemaVersion=4;legacy.world.contentFingerprint=content.legacyFingerprint;delete legacy.world.bedroom.turnTarget;delete legacy.world.bedroom.hardware;
   legacy.world.bedroom.path=[{x:8.1,y:1},{x:8.2,y:1.1},{x:8.3,y:1.1},{x:8.4,y:1.2}];
   const before=structuredClone(legacy),restored=Session.restore(content,legacy).snapshot();
-  expect(legacy).toEqual(before);expect(restored.schemaVersion).toBe(6);expect(restored.world.schemaVersion).toBe(6);
+  expect(legacy).toEqual(before);expect(restored.schemaVersion).toBe(7);expect(restored.world.schemaVersion).toBe(7);
   expect(restored.world.player).toEqual(legacy.world.player);expect(restored.world.items).toEqual(legacy.world.items);expect(restored.world.rng).toEqual(legacy.world.rng);expect(restored.clock).toEqual(legacy.clock);
   expect(restored.world.bedroom!.path).toEqual([{x:8.4,y:1.2}]);expect(restored.world.bedroom!.turnTarget).toBeNull();
 });

@@ -5,6 +5,7 @@ import { commandSchema, snapshotSchema, SCHEMA_VERSION, type ClockState, type Co
 import { createWorld, validateWorld } from "../sim/world";
 import { navigation, reconcileSceneDoor } from "../sim/exploration";
 import { simplifyPath } from "../sim/motion";
+import {createHardwareState} from "../content/hardware";
 
 export class Session {
   private state: WorldState;
@@ -32,7 +33,7 @@ export class Session {
           this.state = stepWorld(this.state, this.content);
           reconcileSceneDoor(this.state, this.content);
         }
-        finishBedroomAction(this.state);
+        finishBedroomAction(this.state,this.content);
       } else this.state = stepWorld(this.state, this.content);
       this.timing.remainderMs = Math.max(0, this.timing.remainderMs - quantum);
     }
@@ -52,18 +53,23 @@ export class Session {
 
   static restore(content: Content, input: unknown): Session {
     try {
-      const legacy=typeof input==="object"&&input!==null&&"schemaVersion" in input&&(input.schemaVersion===4||input.schemaVersion===5);
+      const legacy=typeof input==="object"&&input!==null&&"schemaVersion" in input&&typeof input.schemaVersion==="number"&&[4,5,6].includes(input.schemaVersion);
       if(legacy){
         const next=structuredClone(input) as Record<string,any>;
         const oldVersion=next.schemaVersion;
         if(next.world?.schemaVersion!==oldVersion)throw new Error("Несогласованная версия снимка");
-        if(next.world.contentFingerprint!==content.legacyFingerprint)throw new Error("Снимок создан с другим комплектом данных");
-        if(next.world.profile==="bedroom"&&!["u_bed1","u_corridor"].includes(next.world.player?.roomId))throw new Error("Игрок вне прежней игровой сцены");
+        if(next.world.contentFingerprint!==(oldVersion===6?content.previousFingerprint:content.legacyFingerprint))throw new Error("Снимок создан с другим комплектом данных");
+        if(oldVersion<6&&next.world.profile==="bedroom"&&!["u_bed1","u_corridor"].includes(next.world.player?.roomId))throw new Error("Игрок вне прежней игровой сцены");
         next.world.contentFingerprint=content.fingerprint;
         next.schemaVersion=SCHEMA_VERSION;next.world.schemaVersion=SCHEMA_VERSION;
         if(next.world.bedroom&&oldVersion===4){
           if("turnTarget" in next.world.bedroom)throw new Error("Смешанные версии движения");
           next.world.bedroom.turnTarget=null;
+        }
+        if(next.world.bedroom){
+          if("hardware" in next.world.bedroom||next.world.bedroom.action&&"equipmentItemId" in next.world.bedroom.action)throw new Error("Смешанные версии оборудования");
+          next.world.bedroom.hardware=createHardwareState();
+          if(next.world.bedroom.action)next.world.bedroom.action.equipmentItemId=null;
         }
         input=next;
       }

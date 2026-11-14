@@ -112,7 +112,7 @@ export function observablePoint(world:WorldState,content:Content,p:Point):boolea
 }
 export function observableObject(world:WorldState,content:Content,id:string):boolean {
   const object=SCENE_OBJECTS.find(o=>o.id===id);
-  if(!object)return false;
+  if(!object||object.kind==="hardware"&&object.roomId!==world.player.roomId)return false;
   if(object.width===0)return observablePoint(world,content,{x:object.x,y:object.y});
   if(!observablePoint(world,content,{x:object.ax,y:object.ay}))return false;
   // Whole raster props are culled conservatively at portals; no hidden portion is exposed.

@@ -24,8 +24,8 @@ test("door blocks the player and hides the bedroom, round trip survives reload",
   await expect(canvas).toHaveAttribute("data-room","u_corridor");
   await page.screenshot({path:"test-results/corridor-open.png",fullPage:true});
   await controls.getByRole("button",{name:"Закрыть",exact:true}).click();
-  await expect(canvas).toHaveAttribute("data-visible-objects","");
-  await expect(page.locator("#object-picker option")).toHaveCount(1);
+  await expect(canvas).toHaveAttribute("data-visible-objects","hardware:u_corridor");
+  await expect(page.locator("#object-picker option")).toHaveCount(2);
   await expect(page.locator("#context")).not.toContainText("Тумбочка");
   await page.screenshot({path:"test-results/corridor-closed.png",fullPage:true});
   await page.getByRole("button",{name:/Фонарь · выкл/}).click();
