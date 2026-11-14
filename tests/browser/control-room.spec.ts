@@ -35,6 +35,8 @@ test("walks continuously to the control room and runs local diagnostics",async({
   await panel.getByRole("button",{name:"Самодиагностика · 5 с",exact:true}).click();
   await expect(page.getByTestId("action")).toContainText("Самодиагностика ЦБУ");
   await expect(panel.getByTestId("cbu-result")).toContainText("Повреждение ЦБУ",{timeout:8000});
+  await expect(panel.getByTestId("cbu-result")).toBeInViewport();
+  await expect(panel.getByRole("button",{name:"Самодиагностика · 5 с",exact:true})).toBeInViewport();
   await page.screenshot({path:"test-results/controller-panel.png",fullPage:true});
   await page.getByRole("button",{name:"Закрыть панель ЦБУ",exact:true}).click();
   await door.getByRole("button",{name:"Подойти к двери",exact:true}).click();

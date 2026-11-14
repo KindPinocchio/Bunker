@@ -5,11 +5,14 @@ import {controllerAccessible} from "../sim/exploration";
 
 /** The window consumes the permitted controller read model, never physical room values. */
 export function renderControllerPanel(host:HTMLElement,world:WorldState,content:Content,paused:boolean,diagnose:()=>void){
+  const scroller=host.closest<HTMLElement>(".game-window"),scrollTop=scroller?.scrollTop??0;
+  const focusedSummary=document.activeElement?.tagName==="SUMMARY"&&host.contains(document.activeElement)?document.activeElement.textContent:null;
+  const restoreScroll=()=>{if(scroller)scroller.scrollTop=scrollTop;};
   const expanded=new Set(Array.from(host.querySelectorAll<HTMLDetailsElement>("details[open]")).map(d=>d.querySelector("summary")?.textContent));
   host.replaceChildren();
-  if(!controllerAccessible(world,content)){host.textContent="Подойдите к консоли ЦБУ. Панель недоступна с этого места.";return;}
+  if(!controllerAccessible(world,content)){host.textContent="Подойдите к консоли ЦБУ. Панель недоступна с этого места.";restoreScroll();return;}
   const view=controllerView(world,content);
-  if(!view){host.textContent="Экран погас. ЦБУ не отвечает.";return;}
+  if(!view){host.textContent="Экран погас. ЦБУ не отвечает.";restoreScroll();return;}
   const p=(text:string)=>{const e=document.createElement("p");e.textContent=text;host.append(e);return e;};
   const source={external:"Внешняя сеть",battery:"Аккумулятор",none:"Нет питания"};
   p(`Питание: ${source[view.source]}`);
@@ -34,4 +37,6 @@ export function renderControllerPanel(host:HTMLElement,world:WorldState,content:
   const button=document.createElement("button");button.textContent="Самодиагностика · 5 с";
   button.disabled=paused||!!world.bedroom?.action||!!world.player.action||!!world.player.hands;button.onclick=diagnose;host.append(button);
   p("Результат самодиагностики сохраняется до следующей проверки. При потере питания он сбрасывается.").className="window-note";
+  if(focusedSummary)Array.from(host.querySelectorAll("summary")).find(s=>s.textContent===focusedSummary)?.focus({preventScroll:true});
+  restoreScroll();
 }
