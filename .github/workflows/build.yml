@@ -67,7 +67,7 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser acceptance
-        run: npm run test:e2e
+        run: npm run test:e2e -- --max-failures=1
       - name: Browser failure context
         if: failure()
         run: |

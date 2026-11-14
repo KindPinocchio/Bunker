@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {prepareCorridor} from "./motion-helpers";
+import {installFrameClock,advanceFrames} from "./frame-clock";
 test("bedroom search survives save/reload, transfers a photo and reads its reverse on pause", async ({ page }) => {
     test.setTimeout(60000);
     const errors: string[] = [];
@@ -86,41 +87,41 @@ test("mobile scene fits the viewport and touch movement changes position", async
 
 
 test("a delayed animation frame catches up without losing simulation seconds", async ({ page }) => {
+    await installFrameClock(page);
     await page.goto("/");
     await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
-    await page.clock.install();
-    await page.clock.runFor(50);
+    await advanceFrames(page,0);
     await page.getByRole("button", { name: "Продолжить", exact: true }).click();
-    await page.clock.fastForward(3000);
+    await advanceFrames(page,3000,true);
     await expect(page.getByTestId("clock")).toHaveText("00:03");
     await page.getByRole("button", { name: "Пауза", exact: true }).click();
-    await page.clock.fastForward(10000);
+    await advanceFrames(page,10000,true);
     await expect(page.getByTestId("clock")).toHaveText("00:03");
 });
 
 test("character turns through eight directions, walks, and freezes on pause", async ({page})=>{
-  // Install before navigation so no native animation callback survives the clock swap.
+  // Keep exact animation timestamps independent of the browser timer implementation.
   // This checks facing on unobstructed floor; furniture detours have their own real-time test.
-  await page.clock.install();
+  await installFrameClock(page);
   await prepareCorridor(page);
-  await page.clock.pauseAt(new Date(Date.now()+1000));
+  await advanceFrames(page,0);
   await page.getByRole("button",{name:"Продолжить",exact:true}).click();
-  await page.clock.runFor(50);
+  await advanceFrames(page,50);
   const canvas=page.locator("#scene canvas");
   for(const [keys,facing]of [ [["d"],"e"], [["s","d"],"se"], [["s"],"s"], [["s","a"],"sw"], [["a"],"w"], [["a","w"],"nw"], [["w"],"n"], [["w","d"],"ne"] ] as const){
     for(const key of keys)await page.keyboard.down(key);
-    await page.clock.runFor(facing==="e"?300:120);
+    await advanceFrames(page,facing==="e"?300:120);
     await expect(canvas).toHaveAttribute("data-facing",facing);
     await expect(canvas).toHaveAttribute("data-pose","walk");
     for(const key of keys)await page.keyboard.up(key);
     await expect(canvas).toHaveAttribute("data-pose","idle");
   }
   await page.keyboard.down("a");
-  await page.clock.runFor(150);
+  await advanceFrames(page,150);
   await page.keyboard.press("Space");
   await page.keyboard.up("a");
   const frame=await canvas.getAttribute("data-character-frame"),clock=await page.getByTestId("clock").textContent();
-  await page.clock.runFor(1500);
+  await advanceFrames(page,1500);
   await expect(canvas).toHaveAttribute("data-character-frame",frame!);
   await expect(page.getByTestId("clock")).toHaveText(clock!);
   await page.screenshot({path:"test-results/character-facing.png",fullPage:true});

@@ -2,6 +2,7 @@ import {expect,test} from "@playwright/test";
 import {clickFloor} from "./motion-helpers";
 import {loadContent} from "../../src/content/load";
 import {Session} from "../../src/game/session";
+import {installFrameClock,advanceFrames} from "./frame-clock";
 
 test.use({viewport:{width:1280,height:1100},video:{mode:"on",size:{width:1280,height:1100}}});
 test("walks continuously to the control room and runs local diagnostics",async({page})=>{
@@ -50,6 +51,7 @@ test("walks continuously to the control room and runs local diagnostics",async({
 
 test("the panel shows signals, saves a paused diagnostic and loses remote access",async({page})=>{
   test.setTimeout(60000);
+  await installFrameClock(page);
   await page.goto("/");await expect(page.locator("#app")).toHaveAttribute("data-ready","true");
   const snap=new Session(loadContent(),"controller-browser","bedroom").snapshot();
   Object.assign(snap.world.player,{roomId:"u_control",x:15.45,y:-2.8});
@@ -58,7 +60,7 @@ test("the panel shows signals, saves a paused diagnostic and loses remote access
   await page.locator("#import").setInputFiles({name:"controller.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(snap))});
   await expect(page.getByRole("status")).toContainText("Снимок загружен");
   await page.getByText("Экспедиция и сохранения",{exact:true}).click();
-  await page.clock.install();
+  await advanceFrames(page,0);
   const open=async()=>{await page.locator("#object-picker").selectOption("controller-console");await page.getByRole("button",{name:"Открыть панель ЦБУ",exact:true}).click();};
   await open();const panel=page.getByRole("dialog",{name:"Панель ЦБУ",exact:true});
   await expect(panel.locator('[data-room="u_bed1"]')).toContainText("12.5 °C");
@@ -69,9 +71,9 @@ test("the panel shows signals, saves a paused diagnostic and loses remote access
   await page.getByRole("button",{name:"Продолжить",exact:true}).click();await open();
   await panel.getByRole("button",{name:"Самодиагностика · 5 с",exact:true}).click();
   const pumpSummary=panel.locator("summary").filter({hasText:"Шесть насосов"});
-  await pumpSummary.focus();await page.clock.runFor(1200);await expect(pumpSummary).toBeFocused();
+  await pumpSummary.focus();await advanceFrames(page,1200);await expect(pumpSummary).toBeFocused();
   await page.getByRole("button",{name:"Пауза",exact:true}).click();
-  const remaining=await page.getByTestId("action").textContent();await page.clock.runFor(5000);
+  const remaining=await page.getByTestId("action").textContent();await advanceFrames(page,5000);
   await expect(page.getByTestId("action")).toHaveText(remaining!);
   await page.getByRole("button",{name:"Закрыть панель ЦБУ",exact:true}).click();
   await page.getByText("Экспедиция и сохранения",{exact:true}).click();
@@ -80,8 +82,8 @@ test("the panel shows signals, saves a paused diagnostic and loses remote access
   await page.getByText("Экспедиция и сохранения",{exact:true}).click();
   await page.getByRole("button",{name:"Загрузить",exact:true}).click();await expect(page.getByTestId("action")).toHaveText(remaining!);
   await page.getByText("Экспедиция и сохранения",{exact:true}).click();
-  await page.clock.install();await page.getByRole("button",{name:"Продолжить",exact:true}).click();await open();await page.clock.runFor(4000);
+  await advanceFrames(page,0);await page.getByRole("button",{name:"Продолжить",exact:true}).click();await open();await advanceFrames(page,4000);
   await expect(panel.getByTestId("cbu-result")).toContainText("Повреждение ЦБУ");
-  await page.keyboard.down("s");await page.clock.runFor(1700);await page.keyboard.up("s");
+  await page.keyboard.down("s");await advanceFrames(page,1700);await page.keyboard.up("s");
   await expect(panel).toContainText("Подойдите к консоли ЦБУ");await expect(panel.locator("tbody tr")).toHaveCount(0);
 });
